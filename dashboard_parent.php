@@ -291,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $instanceMap = $_POST['instance_date_map'] ?? [];
             $parentMap = $_POST['parent_notification_map'] ?? [];
             if (!empty($instanceMap[$task_id])) {
-                $instance_date = filter_var($instanceMap[$task_id], FILTER_SANITIZE_STRING);
+                $instance_date = trim((string)$instanceMap[$task_id]);
             }
             if (!empty($parentMap[$task_id])) {
                 $parent_notification_id = (int) $parentMap[$task_id];
@@ -340,16 +340,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = "Invalid task approval request.";
         }
     } elseif (isset($_POST['create_reward'])) {
-        $title = filter_input(INPUT_POST, 'reward_title', FILTER_SANITIZE_STRING);
-        $description = filter_input(INPUT_POST, 'reward_description', FILTER_SANITIZE_STRING);
+        $title = trim((string)($_POST['reward_title'] ?? ''));
+        $description = trim((string)($_POST['reward_description'] ?? ''));
         $point_cost = filter_input(INPUT_POST, 'point_cost', FILTER_VALIDATE_INT);
         $message = createReward($main_parent_id, $title, $description, $point_cost)
             ? "Reward created successfully!"
             : "Failed to create reward.";
     } elseif (isset($_POST['update_reward'])) {
         $reward_id = filter_input(INPUT_POST, 'reward_id', FILTER_VALIDATE_INT);
-        $title = trim((string) filter_input(INPUT_POST, 'reward_title', FILTER_SANITIZE_STRING));
-        $description = trim((string) filter_input(INPUT_POST, 'reward_description', FILTER_SANITIZE_STRING));
+        $title = trim((string) trim((string)($_POST['reward_title'] ?? '')));
+        $description = trim((string) trim((string)($_POST['reward_description'] ?? '')));
         $point_cost = filter_input(INPUT_POST, 'point_cost', FILTER_VALIDATE_INT);
         if ($reward_id && $title !== '' && $point_cost !== false && $point_cost !== null && $point_cost > 0) {
             $message = updateReward($main_parent_id, $reward_id, $title, $description, $point_cost)
@@ -369,13 +369,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['create_goal'])) {
         $child_user_id = filter_input(INPUT_POST, 'child_user_id', FILTER_VALIDATE_INT);
-        $title = filter_input(INPUT_POST, 'goal_title', FILTER_SANITIZE_STRING);
-        $description = trim((string) filter_input(INPUT_POST, 'goal_description', FILTER_SANITIZE_STRING));
+        $title = trim((string)($_POST['goal_title'] ?? ''));
+        $description = trim((string) trim((string)($_POST['goal_description'] ?? '')));
         if ($description === '') {
             $description = null;
         }
-        $start_date = filter_input(INPUT_POST, 'start_date', FILTER_SANITIZE_STRING);
-        $end_date = filter_input(INPUT_POST, 'end_date', FILTER_SANITIZE_STRING);
+        $start_date = trim((string)($_POST['start_date'] ?? ''));
+        $end_date = trim((string)($_POST['end_date'] ?? ''));
         $reward_id = filter_input(INPUT_POST, 'reward_id', FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
         $message = createGoal($main_parent_id, $child_user_id, $title, $start_date, $end_date, $reward_id, $_SESSION['user_id'], ['description' => $description])
             ? "Goal created successfully!"
@@ -386,7 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $child_user_id = filter_input(INPUT_POST, 'child_user_id', FILTER_VALIDATE_INT);
             $points_delta_raw = filter_input(INPUT_POST, 'points_delta', FILTER_VALIDATE_INT);
-            $point_reason = trim(filter_input(INPUT_POST, 'point_reason', FILTER_SANITIZE_STRING) ?? '');
+            $point_reason = trim(trim((string)($_POST['point_reason'] ?? '')) ?? '');
             if (!$child_user_id || $points_delta_raw === false || $points_delta_raw === null || $points_delta_raw == 0) {
                 $message = "Enter a non-zero point amount.";
             } else {
@@ -428,7 +428,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $child_user_id = filter_input(INPUT_POST, 'child_user_id', FILTER_VALIDATE_INT);
             $stars_delta_raw = filter_input(INPUT_POST, 'stars_delta', FILTER_VALIDATE_INT);
-            $star_reason = trim(filter_input(INPUT_POST, 'star_reason', FILTER_SANITIZE_STRING) ?? '');
+            $star_reason = trim(trim((string)($_POST['star_reason'] ?? '')) ?? '');
             if (!$child_user_id || $stars_delta_raw === false || $stars_delta_raw === null || $stars_delta_raw == 0) {
                 $message = "Enter a non-zero star amount.";
             } else {
@@ -457,7 +457,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['approve_goal']) || isset($_POST['reject_goal'])) {
         $goal_id = filter_input(INPUT_POST, 'goal_id', FILTER_VALIDATE_INT);
         $action = isset($_POST['approve_goal']) ? 'approve' : 'reject';
-        $comment = filter_input(INPUT_POST, 'rejection_comment', FILTER_SANITIZE_STRING);
+        $comment = trim((string)($_POST['rejection_comment'] ?? ''));
         if ($action === 'approve') {
             $approved = approveGoal($goal_id, $main_parent_id);
             if ($approved) {
@@ -528,11 +528,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($parent_notification_id && !empty($_POST['deny_reward_note']) && is_array($_POST['deny_reward_note'])) {
             $noteMap = $_POST['deny_reward_note'];
             if (array_key_exists((string) $parent_notification_id, $noteMap)) {
-                $deny_note = trim((string) filter_var($noteMap[(string) $parent_notification_id], FILTER_SANITIZE_STRING));
+                $deny_note = trim((string) trim((string)$noteMap[(string) $parent_notification_id]));
             }
         }
         if ($deny_note === '') {
-            $deny_note = trim(filter_input(INPUT_POST, 'deny_reward_note', FILTER_SANITIZE_STRING) ?? '');
+            $deny_note = trim(trim((string)($_POST['deny_reward_note'] ?? '')) ?? '');
         }
         $denied = ($reward_id && denyReward($reward_id, $main_parent_id, $_SESSION['user_id'], $deny_note));
         if (!$denied && $reward_id) {
@@ -562,13 +562,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!canAddEditChild($_SESSION['user_id'])) {
             $message = "You do not have permission to add children.";
         } else {
-            $first_name = filter_input(INPUT_POST, 'first_name', FILTER_SANITIZE_STRING);
-            $last_name = filter_input(INPUT_POST, 'last_name', FILTER_SANITIZE_STRING);
-            $child_username = filter_input(INPUT_POST, 'child_username', FILTER_SANITIZE_STRING);
-            $child_password = filter_input(INPUT_POST, 'child_password', FILTER_SANITIZE_STRING);
-            $birthday = filter_input(INPUT_POST, 'birthday', FILTER_SANITIZE_STRING);
-            $avatar = filter_input(INPUT_POST, 'avatar', FILTER_SANITIZE_STRING);
-            $gender = filter_input(INPUT_POST, 'child_gender', FILTER_SANITIZE_STRING);
+            $first_name = trim((string)($_POST['first_name'] ?? ''));
+            $last_name = trim((string)($_POST['last_name'] ?? ''));
+            $child_username = trim((string)($_POST['child_username'] ?? ''));
+            $child_password = trim((string)($_POST['child_password'] ?? ''));
+            $birthday = trim((string)($_POST['birthday'] ?? ''));
+            $avatar = trim((string)($_POST['avatar'] ?? ''));
+            $gender = trim((string)($_POST['child_gender'] ?? ''));
             $upload_path = '';
             if (isset($_FILES['avatar_upload']) && $_FILES['avatar_upload']['error'] == 0) {
                 $upload_dir = __DIR__ . '/uploads/avatars/';
@@ -605,11 +605,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!canAddEditFamilyMember($_SESSION['user_id'])) {
             $message = "You do not have permission to add family members or caregivers.";
         } else {
-            $first_name = filter_input(INPUT_POST, 'secondary_first_name', FILTER_SANITIZE_STRING);
-            $last_name = filter_input(INPUT_POST, 'secondary_last_name', FILTER_SANITIZE_STRING);
-            $username = filter_input(INPUT_POST, 'secondary_username', FILTER_SANITIZE_STRING);
-            $password = filter_input(INPUT_POST, 'secondary_password', FILTER_SANITIZE_STRING);
-            $role_type = filter_input(INPUT_POST, 'role_type', FILTER_SANITIZE_STRING);
+            $first_name = trim((string)($_POST['secondary_first_name'] ?? ''));
+            $last_name = trim((string)($_POST['secondary_last_name'] ?? ''));
+            $username = trim((string)($_POST['secondary_username'] ?? ''));
+            $password = trim((string)($_POST['secondary_password'] ?? ''));
+            $role_type = trim((string)($_POST['role_type'] ?? ''));
             if ($role_type && in_array($role_type, ['secondary_parent', 'family_member', 'caregiver'], true)) {
                 $message = addLinkedUser($main_parent_id, $username, $password, $first_name, $last_name, $role_type)
                     ? ucfirst(str_replace('_', ' ', $role_type)) . " added successfully! Username: $username"
@@ -1070,6 +1070,7 @@ function renderStreakCheckSvg($suffix) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
     <title>Parent Dashboard</title>
     <link rel="stylesheet" href="css/main.css?v=3.26.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">

@@ -180,31 +180,31 @@ function hydrateGoalTaskData(array $goals) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['create_goal']) && isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
         $child_user_id = filter_input(INPUT_POST, 'child_user_id', FILTER_VALIDATE_INT);
-        $title = filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING);
-        $description = trim((string) filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING));
+        $title = trim((string)($_POST['title'] ?? ''));
+        $description = trim((string) trim((string)($_POST['description'] ?? '')));
         if ($description === '') {
             $description = null;
         }
-        $start_date = filter_input(INPUT_POST, 'start_date', FILTER_SANITIZE_STRING);
-        $end_date = filter_input(INPUT_POST, 'end_date', FILTER_SANITIZE_STRING);
+        $start_date = trim((string)($_POST['start_date'] ?? ''));
+        $end_date = trim((string)($_POST['end_date'] ?? ''));
         $start_offset = filter_input(INPUT_POST, 'start_tz_offset', FILTER_VALIDATE_INT);
         $end_offset = filter_input(INPUT_POST, 'end_tz_offset', FILTER_VALIDATE_INT);
         $start_date = normalizeGoalDateTimeInput($start_date, $start_offset);
         $end_date = normalizeGoalDateTimeInput($end_date, $end_offset);
         $reward_selection = $_POST['reward_id'] ?? '';
         $reward_id = resolveGoalRewardId($family_root_id, $child_user_id, $reward_selection);
-        $goal_type = filter_input(INPUT_POST, 'goal_type', FILTER_SANITIZE_STRING) ?: 'manual';
+        $goal_type = trim((string)($_POST['goal_type'] ?? '')) ?: 'manual';
         $allowed_types = ['manual', 'routine_streak', 'routine_count', 'task_quota'];
         if (!in_array($goal_type, $allowed_types, true)) {
             $goal_type = 'manual';
         }
         $routine_ids = array_values(array_filter(array_map('intval', $_POST['routine_ids'] ?? [])));
-        $task_category = filter_input(INPUT_POST, 'task_category', FILTER_SANITIZE_STRING);
+        $task_category = trim((string)($_POST['task_category'] ?? ''));
         $target_count = filter_input(INPUT_POST, 'target_count', FILTER_VALIDATE_INT);
         $streak_required = filter_input(INPUT_POST, 'streak_required', FILTER_VALIDATE_INT);
         $require_on_time = !empty($_POST['require_on_time']);
         $points_awarded = filter_input(INPUT_POST, 'points_awarded', FILTER_VALIDATE_INT);
-        $award_mode = filter_input(INPUT_POST, 'award_mode', FILTER_SANITIZE_STRING) ?: 'both';
+        $award_mode = trim((string)($_POST['award_mode'] ?? '')) ?: 'both';
         $requires_parent_approval = isset($_POST['requires_parent_approval']) ? 1 : 0;
         $task_target_ids = array_values(array_filter(array_map('intval', $_POST['task_target_ids'] ?? [])));
         $reactivateOnSave = !empty($_POST['reactivate_on_save']);
@@ -236,32 +236,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['update_goal']) && isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
         $goal_id = filter_input(INPUT_POST, 'goal_id', FILTER_VALIDATE_INT);
         $child_user_id = filter_input(INPUT_POST, 'child_user_id', FILTER_VALIDATE_INT);
-        $title = filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING);
-        $description = trim((string) filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING));
+        $title = trim((string)($_POST['title'] ?? ''));
+        $description = trim((string) trim((string)($_POST['description'] ?? '')));
         if ($description === '') {
             $description = null;
         }
         $reactivateOnSave = !empty($_POST['reactivate_on_save']);
-        $start_date = filter_input(INPUT_POST, 'start_date', FILTER_SANITIZE_STRING);
-        $end_date = filter_input(INPUT_POST, 'end_date', FILTER_SANITIZE_STRING);
+        $start_date = trim((string)($_POST['start_date'] ?? ''));
+        $end_date = trim((string)($_POST['end_date'] ?? ''));
         $start_offset = filter_input(INPUT_POST, 'start_tz_offset', FILTER_VALIDATE_INT);
         $end_offset = filter_input(INPUT_POST, 'end_tz_offset', FILTER_VALIDATE_INT);
         $start_date = normalizeGoalDateTimeInput($start_date, $start_offset);
         $end_date = normalizeGoalDateTimeInput($end_date, $end_offset);
         $reward_selection = $_POST['reward_id'] ?? '';
         $reward_id = resolveGoalRewardId($family_root_id, $child_user_id, $reward_selection);
-        $goal_type = filter_input(INPUT_POST, 'goal_type', FILTER_SANITIZE_STRING) ?: 'manual';
+        $goal_type = trim((string)($_POST['goal_type'] ?? '')) ?: 'manual';
         $allowed_types = ['manual', 'routine_streak', 'routine_count', 'task_quota'];
         if (!in_array($goal_type, $allowed_types, true)) {
             $goal_type = 'manual';
         }
         $routine_ids = array_values(array_filter(array_map('intval', $_POST['routine_ids'] ?? [])));
-        $task_category = filter_input(INPUT_POST, 'task_category', FILTER_SANITIZE_STRING);
+        $task_category = trim((string)($_POST['task_category'] ?? ''));
         $target_count = filter_input(INPUT_POST, 'target_count', FILTER_VALIDATE_INT);
         $streak_required = filter_input(INPUT_POST, 'streak_required', FILTER_VALIDATE_INT);
         $require_on_time = !empty($_POST['require_on_time']);
         $points_awarded = filter_input(INPUT_POST, 'points_awarded', FILTER_VALIDATE_INT);
-        $award_mode = filter_input(INPUT_POST, 'award_mode', FILTER_SANITIZE_STRING) ?: 'both';
+        $award_mode = trim((string)($_POST['award_mode'] ?? '')) ?: 'both';
         $requires_parent_approval = isset($_POST['requires_parent_approval']) ? 1 : 0;
         $task_target_ids = array_values(array_filter(array_map('intval', $_POST['task_target_ids'] ?? [])));
 
@@ -585,6 +585,7 @@ if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
     <title>Goal Management</title>
     <link rel="stylesheet" href="css/main.css?v=3.26.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">

@@ -28,17 +28,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['create_task'])) {
         $child_ids = array_map('intval', $_POST['child_user_ids'] ?? []);
         $child_ids = array_values(array_filter($child_ids));
-        $title = filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING);
-        $description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING);
-        $start_date = filter_input(INPUT_POST, 'start_date', FILTER_SANITIZE_STRING);
-        $due_time = filter_input(INPUT_POST, 'due_time', FILTER_SANITIZE_STRING);
+        $title = trim((string)($_POST['title'] ?? ''));
+        $description = trim((string)($_POST['description'] ?? ''));
+        $start_date = trim((string)($_POST['start_date'] ?? ''));
+        $due_time = trim((string)($_POST['due_time'] ?? ''));
         $end_date_enabled = !empty($_POST['end_date_enabled']);
-        $end_date = $end_date_enabled ? filter_input(INPUT_POST, 'end_date', FILTER_SANITIZE_STRING) : null;
+        $end_date = $end_date_enabled ? trim((string)($_POST['end_date'] ?? '')) : null;
         if (empty($start_date)) {
             $start_date = date('Y-m-d');
         }
         $points = filter_input(INPUT_POST, 'points', FILTER_VALIDATE_INT);
-        $repeat = filter_input(INPUT_POST, 'recurrence', FILTER_SANITIZE_STRING);
+        $repeat = trim((string)($_POST['recurrence'] ?? ''));
         $recurrence = $repeat === 'daily' ? 'daily' : ($repeat === 'weekly' ? 'weekly' : '');
         $recurrence_days = null;
         if ($repeat === 'weekly') {
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $days = array_values(array_filter(array_map('trim', (array) $days)));
             $recurrence_days = !empty($days) ? implode(',', $days) : null;
         }
-        $time_of_day_input = filter_input(INPUT_POST, 'time_of_day', FILTER_SANITIZE_STRING);
+        $time_of_day_input = trim((string)($_POST['time_of_day'] ?? ''));
         $time_of_day = in_array($time_of_day_input, ['anytime', 'morning', 'afternoon', 'evening'], true) ? $time_of_day_input : 'anytime';
         $due_date = $start_date;
         if (!empty($due_time)) {
@@ -54,8 +54,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($recurrence === '' && $time_of_day === 'anytime') {
             $due_date .= ' 23:59:00';
         }
-        $category = filter_input(INPUT_POST, 'category', FILTER_SANITIZE_STRING);
-        $timing_mode = filter_input(INPUT_POST, 'timing_mode', FILTER_SANITIZE_STRING);
+        $category = trim((string)($_POST['category'] ?? ''));
+        $timing_mode = trim((string)($_POST['timing_mode'] ?? ''));
         $timer_minutes = filter_input(INPUT_POST, 'timer_minutes', FILTER_VALIDATE_INT);
         if ($timing_mode !== 'timer') {
             $timer_minutes = null;
@@ -78,17 +78,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $task_id = filter_input(INPUT_POST, 'task_id', FILTER_VALIDATE_INT);
         $child_ids = array_map('intval', $_POST['child_user_ids'] ?? []);
         $child_ids = array_values(array_filter($child_ids));
-        $title = filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING);
-        $description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING);
-        $start_date = filter_input(INPUT_POST, 'start_date', FILTER_SANITIZE_STRING);
-        $due_time = filter_input(INPUT_POST, 'due_time', FILTER_SANITIZE_STRING);
+        $title = trim((string)($_POST['title'] ?? ''));
+        $description = trim((string)($_POST['description'] ?? ''));
+        $start_date = trim((string)($_POST['start_date'] ?? ''));
+        $due_time = trim((string)($_POST['due_time'] ?? ''));
         $end_date_enabled = !empty($_POST['end_date_enabled']);
-        $end_date = $end_date_enabled ? filter_input(INPUT_POST, 'end_date', FILTER_SANITIZE_STRING) : null;
+        $end_date = $end_date_enabled ? trim((string)($_POST['end_date'] ?? '')) : null;
         if (empty($start_date)) {
             $start_date = date('Y-m-d');
         }
         $points = filter_input(INPUT_POST, 'points', FILTER_VALIDATE_INT);
-        $repeat = filter_input(INPUT_POST, 'recurrence', FILTER_SANITIZE_STRING);
+        $repeat = trim((string)($_POST['recurrence'] ?? ''));
         $recurrence = $repeat === 'daily' ? 'daily' : ($repeat === 'weekly' ? 'weekly' : '');
         $recurrence_days = null;
         if ($repeat === 'weekly') {
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $days = array_values(array_filter(array_map('trim', (array) $days)));
             $recurrence_days = !empty($days) ? implode(',', $days) : null;
         }
-        $time_of_day_input = filter_input(INPUT_POST, 'time_of_day', FILTER_SANITIZE_STRING);
+        $time_of_day_input = trim((string)($_POST['time_of_day'] ?? ''));
         $time_of_day = in_array($time_of_day_input, ['anytime', 'morning', 'afternoon', 'evening'], true) ? $time_of_day_input : 'anytime';
         $due_date = $start_date;
         if (!empty($due_time)) {
@@ -104,8 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($recurrence === '' && $time_of_day === 'anytime') {
             $due_date .= ' 23:59:00';
         }
-        $category = filter_input(INPUT_POST, 'category', FILTER_SANITIZE_STRING);
-        $timing_mode = filter_input(INPUT_POST, 'timing_mode', FILTER_SANITIZE_STRING);
+        $category = trim((string)($_POST['category'] ?? ''));
+        $timing_mode = trim((string)($_POST['timing_mode'] ?? ''));
         $timer_minutes = filter_input(INPUT_POST, 'timer_minutes', FILTER_VALIDATE_INT);
         if ($timing_mode !== 'timer') {
             $timer_minutes = null;
@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['complete_task'])) {
         $task_id = filter_input(INPUT_POST, 'task_id', FILTER_VALIDATE_INT);
-        $instance_date = filter_input(INPUT_POST, 'instance_date', FILTER_SANITIZE_STRING);
+        $instance_date = trim((string)($_POST['instance_date'] ?? ''));
         $photo_proof = null;
         $taskInfoStmt = $db->prepare("SELECT parent_user_id, child_user_id, title, photo_proof_required FROM tasks WHERE id = :id");
         $taskInfoStmt->execute([':id' => $task_id]);
@@ -230,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['approve_task']) && isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id']) && canAddEditChild($_SESSION['user_id'])) {
         $task_id = filter_input(INPUT_POST, 'task_id', FILTER_VALIDATE_INT);
-        $instance_date = filter_input(INPUT_POST, 'instance_date', FILTER_SANITIZE_STRING);
+        $instance_date = trim((string)($_POST['instance_date'] ?? ''));
         if (approveTask($task_id, $instance_date)) {
             $message = "Task approved!";
         } else {
@@ -238,10 +238,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['reject_task']) && isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id']) && canAddEditChild($_SESSION['user_id'])) {
         $task_id = filter_input(INPUT_POST, 'task_id', FILTER_VALIDATE_INT);
-        $reject_note = trim((string)filter_input(INPUT_POST, 'reject_note', FILTER_SANITIZE_STRING));
-        $reject_action = filter_input(INPUT_POST, 'reject_action', FILTER_SANITIZE_STRING);
+        $reject_note = trim((string)trim((string)($_POST['reject_note'] ?? '')));
+        $reject_action = trim((string)($_POST['reject_action'] ?? ''));
         $reactivate = $reject_action === 'reactivate';
-        $instance_date = filter_input(INPUT_POST, 'instance_date', FILTER_SANITIZE_STRING);
+        $instance_date = trim((string)($_POST['instance_date'] ?? ''));
         if ($task_id && rejectTask($task_id, $family_root_id, $reject_note, $reactivate, $_SESSION['user_id'], $instance_date)) {
             $message = $reactivate ? "Task rejected and reactivated." : "Task rejected and closed.";
         } else {
@@ -553,6 +553,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
     <title>Task Management</title>
       <link rel="stylesheet" href="css/main.css?v=3.26.0">
     <link rel="icon" type="image/svg+xml" href="images/favicon.svg">

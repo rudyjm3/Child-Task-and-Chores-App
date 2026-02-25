@@ -12,9 +12,10 @@ if (isset($_SESSION['user_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
-    $password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
+    $username = trim((string)($_POST['username'] ?? ''));
+    $password = trim((string)($_POST['password'] ?? ''));
     if (loginUser($username, $password)) {
+        session_regenerate_id(true);
         $userStmt = $db->prepare("SELECT id, role, name FROM users WHERE username = :username");
         $userStmt->execute([':username' => $username]);
         $user = $userStmt->fetch(PDO::FETCH_ASSOC);
@@ -39,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
     <title>Login - Child Task and Chore App</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

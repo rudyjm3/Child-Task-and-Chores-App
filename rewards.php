@@ -120,6 +120,7 @@ if ($role_type === 'child') {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
         <title>Rewards Shop</title>
         <link rel="stylesheet" href="css/main.css?v=3.26.0">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -496,8 +497,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['update_reward'])) {
         $reward_id = filter_input(INPUT_POST, 'reward_id', FILTER_VALIDATE_INT);
-        $title = trim((string)filter_input(INPUT_POST, 'reward_title', FILTER_SANITIZE_STRING));
-        $description = trim((string)filter_input(INPUT_POST, 'reward_description', FILTER_SANITIZE_STRING));
+        $title = trim((string)trim((string)($_POST['reward_title'] ?? '')));
+        $description = trim((string)trim((string)($_POST['reward_description'] ?? '')));
         $point_cost = filter_input(INPUT_POST, 'point_cost', FILTER_VALIDATE_INT);
         if ($reward_id && $title !== '' && $point_cost !== false && $point_cost !== null && $point_cost > 0) {
             $messages[] = updateReward($main_parent_id, $reward_id, $title, $description, $point_cost)
@@ -548,7 +549,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$reward_id && isset($_POST['deny_reward'])) {
             $reward_id = filter_input(INPUT_POST, 'deny_reward', FILTER_VALIDATE_INT);
         }
-        $deny_note = trim(filter_input(INPUT_POST, 'deny_reward_note', FILTER_SANITIZE_STRING) ?? '');
+        $deny_note = trim(trim((string)($_POST['deny_reward_note'] ?? '')) ?? '');
         $denied = ($reward_id && denyReward($reward_id, $main_parent_id, $_SESSION['user_id'], $deny_note));
         if (!$denied && $reward_id) {
             $statusStmt = $db->prepare("SELECT status, denied_on FROM rewards WHERE id = :id AND parent_user_id = :parent_id");
@@ -584,12 +585,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messages[] = "Unable to deny reward request.";
         }
     } elseif (isset($_POST['create_template'])) {
-        $title = trim((string)filter_input(INPUT_POST, 'template_title', FILTER_SANITIZE_STRING));
-        $description = trim((string)filter_input(INPUT_POST, 'template_description', FILTER_SANITIZE_STRING));
+        $title = trim((string)trim((string)($_POST['template_title'] ?? '')));
+        $description = trim((string)trim((string)($_POST['template_description'] ?? '')));
         $point_cost = filter_input(INPUT_POST, 'template_point_cost', FILTER_VALIDATE_INT);
         $level_required = filter_input(INPUT_POST, 'template_level_required', FILTER_VALIDATE_INT);
-        $icon_class = trim((string)filter_input(INPUT_POST, 'template_icon_class', FILTER_SANITIZE_STRING));
-        $icon_color = trim((string)filter_input(INPUT_POST, 'template_icon_color', FILTER_SANITIZE_STRING));
+        $icon_class = trim((string)trim((string)($_POST['template_icon_class'] ?? '')));
+        $icon_color = trim((string)trim((string)($_POST['template_icon_color'] ?? '')));
         if (!in_array($icon_class, $rewardIconClasses, true)) {
             $icon_class = $defaultRewardIcon;
         }
@@ -614,12 +615,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['update_template'])) {
         $template_id = filter_input(INPUT_POST, 'template_id', FILTER_VALIDATE_INT);
-        $title = trim((string)filter_input(INPUT_POST, 'template_title', FILTER_SANITIZE_STRING));
-        $description = trim((string)filter_input(INPUT_POST, 'template_description', FILTER_SANITIZE_STRING));
+        $title = trim((string)trim((string)($_POST['template_title'] ?? '')));
+        $description = trim((string)trim((string)($_POST['template_description'] ?? '')));
         $point_cost = filter_input(INPUT_POST, 'template_point_cost', FILTER_VALIDATE_INT);
         $level_required = filter_input(INPUT_POST, 'template_level_required', FILTER_VALIDATE_INT);
-        $icon_class = trim((string)filter_input(INPUT_POST, 'template_icon_class', FILTER_SANITIZE_STRING));
-        $icon_color = trim((string)filter_input(INPUT_POST, 'template_icon_color', FILTER_SANITIZE_STRING));
+        $icon_class = trim((string)trim((string)($_POST['template_icon_class'] ?? '')));
+        $icon_color = trim((string)trim((string)($_POST['template_icon_color'] ?? '')));
         if (!in_array($icon_class, $rewardIconClasses, true)) {
             $icon_class = $defaultRewardIcon;
         }
@@ -826,6 +827,7 @@ foreach ($children as $child) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
     <title>Rewards Shop</title>
     <link rel="stylesheet" href="css/main.css?v=3.26.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">

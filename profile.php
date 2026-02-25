@@ -50,14 +50,14 @@ if (isset($_GET['self'])) {
     $requested_context = ($current_role_type === 'child') ? 'child' : 'adult';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $requested_user_id = filter_input(INPUT_POST, 'edit_user_id', FILTER_VALIDATE_INT, ['flags' => FILTER_NULL_ON_FAILURE]);
-    $requested_context = filter_input(INPUT_POST, 'edit_type', FILTER_SANITIZE_STRING);
+    $requested_context = trim((string)($_POST['edit_type'] ?? ''));
 } else {
     if (isset($_GET['type'], $_GET['user_id']) && $_GET['type'] === 'child') {
         $requested_user_id = filter_input(INPUT_GET, 'user_id', FILTER_VALIDATE_INT);
         $requested_context = 'child';
     } elseif (isset($_GET['edit_user'])) {
         $requested_user_id = filter_input(INPUT_GET, 'edit_user', FILTER_VALIDATE_INT);
-        $requested_context = filter_input(INPUT_GET, 'role_type', FILTER_SANITIZE_STRING);
+        $requested_context = trim((string)($_GET['role_type'] ?? ''));
     }
 }
 
@@ -124,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user_id != $_SESSION['user_id'] && !in_array($current_role_type, ['main_parent', 'secondary_parent'])) {
             $message = "Access denied.";
         } else {
-            $new_password = filter_input(INPUT_POST, 'new_password', FILTER_SANITIZE_STRING);
+            $new_password = trim((string)($_POST['new_password'] ?? ''));
             if (updateUserPassword($user_id, $new_password)) {
                 $message = "Password updated successfully!";
                 if ($user_id != $_SESSION['user_id']) {
@@ -149,11 +149,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user_id != $_SESSION['user_id'] && !in_array($current_role_type, ['main_parent', 'secondary_parent'])) {
             $message = "Access denied.";
         } else {
-            $first_name = filter_input(INPUT_POST, 'first_name', FILTER_SANITIZE_STRING);
-            $last_name = filter_input(INPUT_POST, 'last_name', FILTER_SANITIZE_STRING);
-            $birthday = filter_input(INPUT_POST, 'birthday', FILTER_SANITIZE_STRING);
-            $avatar = filter_input(INPUT_POST, 'avatar', FILTER_SANITIZE_STRING);
-            $child_gender = filter_input(INPUT_POST, 'child_gender', FILTER_SANITIZE_STRING);
+            $first_name = trim((string)($_POST['first_name'] ?? ''));
+            $last_name = trim((string)($_POST['last_name'] ?? ''));
+            $birthday = trim((string)($_POST['birthday'] ?? ''));
+            $avatar = trim((string)($_POST['avatar'] ?? ''));
+            $child_gender = trim((string)($_POST['child_gender'] ?? ''));
             $allowed_genders = ['male', 'female', 'nonbinary', 'prefer_not_to_say'];
             if (!in_array($child_gender, $allowed_genders, true)) {
                 $child_gender = null;
@@ -205,19 +205,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user_id != $_SESSION['user_id'] && !in_array($current_role_type, ['main_parent', 'secondary_parent'])) {
             $message = "Access denied.";
         } else {
-            $first_name = filter_input(INPUT_POST, 'first_name', FILTER_SANITIZE_STRING);
-            $last_name = filter_input(INPUT_POST, 'last_name', FILTER_SANITIZE_STRING);
-            $role_badge_label = filter_input(INPUT_POST, 'role_badge_label', FILTER_SANITIZE_STRING);
+            $first_name = trim((string)($_POST['first_name'] ?? ''));
+            $last_name = trim((string)($_POST['last_name'] ?? ''));
+            $role_badge_label = trim((string)($_POST['role_badge_label'] ?? ''));
             $use_role_badge_label = !empty($_POST['use_role_badge_label']) ? 1 : 0;
             $target_effective_role_for_update = getEffectiveRole($user_id);
 
             if (in_array($target_effective_role_for_update, ['main_parent', 'secondary_parent'], true)) {
-                $gender = filter_input(INPUT_POST, 'gender', FILTER_SANITIZE_STRING);
+                $gender = trim((string)($_POST['gender'] ?? ''));
                 if (!in_array($gender, ['male', 'female'], true)) {
                     $gender = null;
                 }
                 $allowed_parent_titles = ['mother', 'father'];
-                $parent_title = filter_input(INPUT_POST, 'parent_title', FILTER_SANITIZE_STRING);
+                $parent_title = trim((string)($_POST['parent_title'] ?? ''));
                 if (!in_array($parent_title, $allowed_parent_titles, true)) {
                     $parent_title = null;
                 }
@@ -340,6 +340,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'child') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
     <title>Profile - Child Task and Chore App</title>
     <link rel="stylesheet" href="css/main.css?v=3.26.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">

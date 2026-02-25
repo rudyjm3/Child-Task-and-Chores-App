@@ -559,7 +559,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $childIds = [(int) $duplicateChildId];
             }
         }
-        $title = trim((string) filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING));
+        $title = trim((string) trim((string)($_POST['title'] ?? '')));
         $childIds = array_values(array_filter(array_map('intval', $_POST['child_user_ids'] ?? [])));
         if (empty($childIds)) {
             $child_id = filter_input(INPUT_POST, 'child_user_id', FILTER_VALIDATE_INT);
@@ -567,13 +567,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $childIds = [(int) $child_id];
             }
         }
-        $start_time = filter_input(INPUT_POST, 'start_time', FILTER_SANITIZE_STRING);
-        $end_time = filter_input(INPUT_POST, 'end_time', FILTER_SANITIZE_STRING);
-        $recurrence = filter_input(INPUT_POST, 'recurrence', FILTER_SANITIZE_STRING);
+        $start_time = trim((string)($_POST['start_time'] ?? ''));
+        $end_time = trim((string)($_POST['end_time'] ?? ''));
+        $recurrence = trim((string)($_POST['recurrence'] ?? ''));
         $bonus_points = filter_input(INPUT_POST, 'bonus_points', FILTER_VALIDATE_INT);
-        $time_of_day_input = filter_input(INPUT_POST, 'time_of_day', FILTER_SANITIZE_STRING);
+        $time_of_day_input = trim((string)($_POST['time_of_day'] ?? ''));
         $time_of_day = in_array($time_of_day_input, ['anytime', 'morning', 'afternoon', 'evening'], true) ? $time_of_day_input : 'anytime';
-        $routine_date = filter_input(INPUT_POST, 'routine_date', FILTER_SANITIZE_STRING);
+        $routine_date = trim((string)($_POST['routine_date'] ?? ''));
         $recurrence_days = null;
         $structureRaw = $_POST['routine_structure'] ?? '';
 
@@ -641,7 +641,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($isParentContext && isset($_POST['update_routine'])) {
         $routine_id = filter_input(INPUT_POST, 'routine_id', FILTER_VALIDATE_INT);
-        $title = trim((string) filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING));
+        $title = trim((string) trim((string)($_POST['title'] ?? '')));
         $childIds = array_values(array_filter(array_map('intval', $_POST['child_user_ids'] ?? [])));
         if (empty($childIds)) {
             $child_id = filter_input(INPUT_POST, 'child_user_id', FILTER_VALIDATE_INT);
@@ -649,13 +649,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $childIds = [(int) $child_id];
             }
         }
-        $start_time = filter_input(INPUT_POST, 'start_time', FILTER_SANITIZE_STRING);
-        $end_time = filter_input(INPUT_POST, 'end_time', FILTER_SANITIZE_STRING);
-        $recurrence = filter_input(INPUT_POST, 'recurrence', FILTER_SANITIZE_STRING);
+        $start_time = trim((string)($_POST['start_time'] ?? ''));
+        $end_time = trim((string)($_POST['end_time'] ?? ''));
+        $recurrence = trim((string)($_POST['recurrence'] ?? ''));
         $bonus_points = filter_input(INPUT_POST, 'bonus_points', FILTER_VALIDATE_INT);
-        $time_of_day_input = filter_input(INPUT_POST, 'time_of_day', FILTER_SANITIZE_STRING);
+        $time_of_day_input = trim((string)($_POST['time_of_day'] ?? ''));
         $time_of_day = in_array($time_of_day_input, ['anytime', 'morning', 'afternoon', 'evening'], true) ? $time_of_day_input : 'anytime';
-        $routine_date = filter_input(INPUT_POST, 'routine_date', FILTER_SANITIZE_STRING);
+        $routine_date = trim((string)($_POST['routine_date'] ?? ''));
         $recurrence_days = null;
         $structureRaw = $_POST['routine_structure'] ?? '';
 
@@ -770,11 +770,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messages[] = ['type' => 'error', 'text' => 'Unable to delete routine.'];
         }
     } elseif ($isParentContext && isset($_POST['create_routine_task'])) {
-        $title = trim((string) filter_input(INPUT_POST, 'rt_title', FILTER_SANITIZE_STRING));
-        $description = trim((string) filter_input(INPUT_POST, 'rt_description', FILTER_SANITIZE_STRING));
+        $title = trim((string) trim((string)($_POST['rt_title'] ?? '')));
+        $description = trim((string) trim((string)($_POST['rt_description'] ?? '')));
         $time_limit = filter_input(INPUT_POST, 'rt_time_limit', FILTER_VALIDATE_INT);
         $point_value = filter_input(INPUT_POST, 'rt_point_value', FILTER_VALIDATE_INT);
-        $category = filter_input(INPUT_POST, 'rt_category', FILTER_SANITIZE_STRING);
+        $category = trim((string)($_POST['rt_category'] ?? ''));
         $min_minutes_input = filter_input(INPUT_POST, 'rt_min_time', FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
 
         $time_limit = ($time_limit !== false && $time_limit > 0) ? $time_limit : null;
@@ -801,11 +801,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($isParentContext && isset($_POST['update_routine_task'])) {
         $routine_task_id = filter_input(INPUT_POST, 'routine_task_id', FILTER_VALIDATE_INT);
-        $title = trim((string) filter_input(INPUT_POST, 'edit_rt_title', FILTER_SANITIZE_STRING));
-        $description = trim((string) filter_input(INPUT_POST, 'edit_rt_description', FILTER_SANITIZE_STRING));
+        $title = trim((string) trim((string)($_POST['edit_rt_title'] ?? '')));
+        $description = trim((string) trim((string)($_POST['edit_rt_description'] ?? '')));
         $time_limit = filter_input(INPUT_POST, 'edit_rt_time_limit', FILTER_VALIDATE_INT);
         $point_value = filter_input(INPUT_POST, 'edit_rt_point_value', FILTER_VALIDATE_INT);
-        $category = filter_input(INPUT_POST, 'edit_rt_category', FILTER_SANITIZE_STRING);
+        $category = trim((string)($_POST['edit_rt_category'] ?? ''));
 
         if (!isset($routine_tasks) || !is_array($routine_tasks)) {
             $routine_tasks = getRoutineTasks($family_root_id);
@@ -1253,6 +1253,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'child') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
     <title>Routine Management</title>
     <link rel="stylesheet" href="css/main.css?v=3.26.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
