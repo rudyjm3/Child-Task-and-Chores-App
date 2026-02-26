@@ -3,25 +3,11 @@
 // Provides parent routine builder with validation, timer warnings for children, and overtime tracking.
 
 session_start();
-
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/page_setup.php';
 
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit;
-}
-$currentPage = basename($_SERVER['PHP_SELF']);
-
-if (!isset($_SESSION['name'])) {
-    $_SESSION['name'] = getDisplayName($_SESSION['user_id']);
-}
-
-$family_root_id = getFamilyRootId($_SESSION['user_id']);
 $isParentContext = canCreateContent($_SESSION['user_id']);
-
 $routinePreferences = getRoutinePreferences($family_root_id);
-
-require_once __DIR__ . '/includes/notifications_bootstrap.php';
 
 $messages = [];
 $createRoutineState = ['tasks' => []];
@@ -1189,14 +1175,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_routine'])) {
 }
 }
 
-$welcome_role_label = getUserRoleLabel($_SESSION['user_id']);
-if (!$welcome_role_label) {
-    $fallback_role = getEffectiveRole($_SESSION['user_id']) ?: ($_SESSION['role'] ?? null);
-    if ($fallback_role) {
-        $welcome_role_label = ucfirst(str_replace('_', ' ', $fallback_role));
-    }
-}
-
 $createBuilderInitial = $createRoutineState['tasks'];
 $editBuilderInitial = [];
 foreach ($routines as $routine) {
@@ -1251,12 +1229,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'child') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#7c3aed">
-    <title>Routine Management</title>
-    <link rel="stylesheet" href="css/main.css?v=3.26.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<?php $pageTitle = 'Routine Management'; include __DIR__ . '/includes/html_head.php'; ?>
     <style>
         .page-messages { max-width: 960px; margin: 0 auto 20px; }
         .page-alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 12px; font-weight: 600; }
@@ -1674,34 +1647,7 @@ margin-bottom: 20px;}
             .status-summary { font-size: 1rem; }
             .summary-footer strong { font-size: 1.3rem; }
         }
-        .page-header { padding: 18px 16px 12px; display: grid; gap: 12px; text-align: left; }
-        .page-header-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-        .page-header-title { display: grid; gap: 6px; }
-        .page-header-title h1 { margin: 0; font-size: 1.2rem; color: #2c2c2c; }
-        .page-header-meta { margin: 0; color: #616161; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.8rem; font-weight: 600; }
-        .page-header-actions { display: flex; gap: 10px; align-items: center; }
-        .page-header-action { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid #dfe8df; background: #fff; color: #6d6d6d; box-shadow: 0 6px 14px rgba(0,0,0,0.08); cursor: pointer; }
-        .page-header-action i { font-size: 1.1rem; }
-        .page-header-action:hover { color: #4caf50; border-color: #c8e6c9; }
-        .nav-links { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; padding: 10px 12px; border-radius: 18px; background: #fff; border: 1px solid #eceff4; box-shadow: 0 8px 18px rgba(0,0,0,0.06); }
-        .nav-link,
-        .nav-mobile-link { flex: 1 1 90px; display: grid; justify-items: center; text-align: center; gap: 4px; text-decoration: none; color: #6d6d6d; font-weight: 600; font-size: 0.75rem; border-radius: 12px; padding: 6px 4px; }
-        .nav-link i,
-        .nav-mobile-link i { font-size: 1.2rem; }
-        .nav-link.is-active,
-        .nav-mobile-link.is-active { color: #4caf50; }
-        .nav-link.is-active i,
-        .nav-mobile-link.is-active i { color: #4caf50; }
-        .nav-link:hover,
-        .nav-mobile-link:hover { color: #4caf50; }
-        .nav-link-button { background: transparent; border: none; cursor: pointer; }
-        .nav-mobile-bottom { display: none; gap: 6px; padding: 10px 12px; border-top: 1px solid #e0e0e0; background: #fff; position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; }
-        .nav-mobile-bottom .nav-mobile-link { flex: 1; }
-        @media (max-width: 768px) {
-            .nav-links { display: none; }
-            .nav-mobile-bottom { display: flex; justify-content: space-between; }
-            body { padding-bottom: 72px; }
-        }
+        /* page-header, nav-links, nav-mobile-bottom → css/shared.css */
         .routine-action-bar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin: 10px 0 18px; }
         .routine-create-button { width: 52px; height: 52px; border-radius: 50%; border: none; background: #ff9800; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; cursor: pointer; box-shadow: 0 6px 14px rgba(255, 152, 0, 0.35); }
         .routine-create-button:hover { background: #fb8c00; }
@@ -1711,7 +1657,7 @@ margin-bottom: 20px;}
         .routine-library-button:hover { color: #7a7a7a; }
         .routine-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 4200; padding: 14px; }
         .routine-modal.open { display: flex; }
-        body.modal-open { overflow: hidden; }
+        /* body.modal-open → css/shared.css */
         .routine-modal-card { background: #fff; border-radius: 14px; max-width: 920px; width: min(920px, 100%); max-height: 90vh; overflow: hidden; box-shadow: 0 12px 32px rgba(0,0,0,0.25); display: grid; grid-template-rows: auto 1fr; }
         .routine-modal-card header { display: flex; align-items: center; justify-content: space-between; flex-direction: row;font-weight: 600; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; }
         .routine-modal-card h2 { margin: 0; font-size: 1.1rem; }
@@ -1735,77 +1681,7 @@ margin-bottom: 20px;}
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body<?php echo !empty($bodyClasses) ? ' class="' . implode(' ', $bodyClasses) . '"' : ''; ?>>
-    <?php
-        $dashboardPage = $isParentContext ? 'dashboard_parent.php' : 'dashboard_child.php';
-        $dashboardActive = $currentPage === $dashboardPage;
-        $routinesActive = $currentPage === 'routine.php';
-        $tasksActive = $currentPage === 'task.php';
-        $goalsActive = $currentPage === 'goal.php';
-        $rewardsActive = $currentPage === 'rewards.php';
-        $profileActive = $currentPage === 'profile.php';
-    ?>
-    <header class="page-header">
-        <div class="page-header-top">
-            <div class="page-header-title">
-                <h1>Routine Management</h1>
-                <p class="page-header-meta">
-                    <?php $hour=(int)date('G'); echo $hour<12?'Good morning,':($hour<18?'Good afternoon,':'Good evening,'); ?> <?php echo htmlspecialchars($_SESSION['name'] ?? $_SESSION['username'] ?? 'User'); ?>
-                    <?php if (false): // role-badge hidden ?>
-                        <span class="role-badge"><?php echo htmlspecialchars($welcome_role_label); ?></span>
-                    <?php endif; ?>
-                </p>
-            </div>
-            <div class="page-header-actions">
-                <?php if (!empty($isParentNotificationUser)): ?>
-                    <button type="button" class="page-header-action parent-notification-trigger" data-parent-notify-trigger aria-label="Notifications">
-                        <i class="fa-solid fa-bell"></i>
-                        <?php if ($parentNotificationCount > 0): ?>
-                            <span class="parent-notification-badge"><?php echo (int) $parentNotificationCount; ?></span>
-                        <?php endif; ?>
-                    </button>
-                    <a class="nav-family-button page-header-action" href="dashboard_parent.php#manage-family" aria-label="Family settings">
-                        <i class="fa-solid fa-gear"></i>
-                    </a>
-                <?php elseif (!empty($isChildNotificationUser)): ?>
-                    <button type="button" class="page-header-action notification-trigger" data-child-notify-trigger aria-label="Notifications">
-                        <i class="fa-solid fa-bell"></i>
-                        <?php if ($notificationCount > 0): ?>
-                            <span class="notification-badge"><?php echo (int) $notificationCount; ?></span>
-                        <?php endif; ?>
-                    </button>
-                <?php endif; ?>
-                <a class="page-header-action" href="logout.php" aria-label="Logout">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                </a>
-            </div>
-        </div>
-        <nav class="nav-links" aria-label="Primary">
-            <a class="nav-link<?php echo $dashboardActive ? ' is-active' : ''; ?>" href="<?php echo htmlspecialchars($dashboardPage); ?>"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-house"></i>
-                <span>Dashboard</span>
-            </a>
-            <a class="nav-link<?php echo $routinesActive ? ' is-active' : ''; ?>" href="routine.php"<?php echo $routinesActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-repeat week-item-icon"></i>
-                <span>Routines</span>
-            </a>
-            <a class="nav-link<?php echo $tasksActive ? ' is-active' : ''; ?>" href="task.php"<?php echo $tasksActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-list-check"></i>
-                <span>Tasks</span>
-            </a>
-            <a class="nav-link<?php echo $goalsActive ? ' is-active' : ''; ?>" href="goal.php"<?php echo $goalsActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-bullseye"></i>
-                <span>Goals</span>
-            </a>
-            <a class="nav-link<?php echo $rewardsActive ? ' is-active' : ''; ?>" href="rewards.php"<?php echo $rewardsActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-gift"></i>
-                <span>Rewards Shop</span>
-            </a>
-            <a class="nav-link<?php echo $profileActive ? ' is-active' : ''; ?>" href="profile.php?self=1"<?php echo $profileActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-user"></i>
-                <span>Profile</span>
-            </a>
-        </nav>
-    </header>
+    <?php $pageHeading = 'Routine Management'; include __DIR__ . '/includes/page_header.php'; ?>
     <main class="routine-layout">
         <?php if (!empty($messages)): ?>
             <div class="page-messages">
@@ -2742,31 +2618,7 @@ margin-bottom: 20px;}
             </div>
         </div>
     </div>
-    <nav class="nav-mobile-bottom" aria-label="Primary">
-        <a class="nav-mobile-link<?php echo $dashboardActive ? ' is-active' : ''; ?>" href="<?php echo htmlspecialchars($dashboardPage); ?>"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-house"></i>
-            <span>Dashboard</span>
-        </a>
-        <a class="nav-mobile-link<?php echo $routinesActive ? ' is-active' : ''; ?>" href="routine.php"<?php echo $routinesActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-repeat week-item-icon"></i>
-            <span>Routines</span>
-        </a>
-        <a class="nav-mobile-link<?php echo $tasksActive ? ' is-active' : ''; ?>" href="task.php"<?php echo $tasksActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-list-check"></i>
-            <span>Tasks</span>
-        </a>
-        <a class="nav-mobile-link<?php echo $goalsActive ? ' is-active' : ''; ?>" href="goal.php"<?php echo $goalsActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-bullseye"></i>
-            <span>Goals</span>
-        </a>
-        <a class="nav-mobile-link<?php echo $rewardsActive ? ' is-active' : ''; ?>" href="rewards.php"<?php echo $rewardsActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-gift"></i>
-            <span>Rewards Shop</span>
-        </a>
-    </nav>
-    <footer>
-        <p>Child Task and Chore App - Ver 3.26.0</p>
-    </footer>
+    <?php include __DIR__ . '/includes/page_footer.php'; ?>
     <script>
         window.RoutinePage = <?php echo json_encode($pageState, $jsonOptions); ?>;
     </script>

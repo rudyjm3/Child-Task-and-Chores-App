@@ -7,6 +7,10 @@
 
 require_once __DIR__ . '/db_connect.php';
 
+if (!defined('APP_VERSION')) {
+    define('APP_VERSION', '3.26.0');
+}
+
 // Return a consistent display name for a user
 function getDisplayName($user_id) {
     global $db;
