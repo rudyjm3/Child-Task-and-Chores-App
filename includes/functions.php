@@ -615,14 +615,20 @@ function updateChildProfile($child_user_id, $first_name, $last_name, $birthday, 
 
 // Revised: getDashboardData (name display, caregiver access)
 function getDashboardData($user_id) {
+    $role = getUserRole($user_id) ?? 'unknown';
+    error_log("Fetching dashboard data for user_id=$user_id, role=$role");
+    if (in_array($role, ['main_parent', 'family_member', 'caregiver'])) {
+        return getParentDashboardData($user_id, $role);
+    } elseif ($role === 'child') {
+        return getChildDashboardData($user_id);
+    }
+    return [];
+}
+
+function getParentDashboardData($user_id, $role = 'main_parent') {
     global $db;
     $data = [];
 
-    // Normalize role (map legacy 'parent' -> 'main_parent')
-    $role = getUserRole($user_id) ?? 'unknown';
-    error_log("Fetching dashboard data for user_id=$user_id, role=$role");
-
-    // Build a unified branch for all parent-like roles
     if (in_array($role, ['main_parent', 'family_member', 'caregiver'])) {
         // Determine the main parent id for the current actor
         $main_parent_id = $user_id;
@@ -954,9 +960,14 @@ function getDashboardData($user_id) {
         $stmt->execute([':parent_id' => $main_parent_id]);
         $data['goals_met'] = (int)($stmt->fetchColumn() ?: 0);
 
-    } elseif ($role === 'child') {
-        // Fetch remaining_points from child_points
-        autoCloseExpiredGoals(null, $user_id);
+    }
+    return $data;
+}
+
+function getChildDashboardData($user_id) {
+    global $db;
+    $data = [];
+    autoCloseExpiredGoals(null, $user_id);
         $stmt = $db->prepare("SELECT total_points FROM child_points WHERE child_user_id = :child_id");
         $stmt->execute([':child_id' => $user_id]);
         $data['remaining_points'] = $stmt->fetchColumn() ?: 0;
@@ -1057,7 +1068,6 @@ function getDashboardData($user_id) {
         $data['notifications_new'] = array_values(array_filter($allNotes, static function ($n) { return empty($n['is_read']) && empty($n['deleted_at']); }));
         $data['notifications_read'] = array_values(array_filter($allNotes, static function ($n) { return !empty($n['is_read']) && empty($n['deleted_at']); }));
         $data['notifications_deleted'] = array_values(array_filter($allNotes, static function ($n) { return !empty($n['deleted_at']); }));
-    }
 
     return $data;
 }
@@ -1639,6 +1649,122 @@ function logRoutineCompletionSession($routine_id, $child_id, $parent_id, $comple
         error_log("Failed to log routine completion for routine $routine_id: " . $e->getMessage());
         return false;
     }
+}
+
+// Mark a routine as manually completed by a parent, awarding points and logging the session.
+// Returns a message array: ['type' => 'error'|'success', 'text' => string]
+function completeRoutineAsParent(int $routine_id, array $selected, array $completed_at_map, bool $grant_bonus, int $family_root_id): array {
+    global $db;
+
+    if (!routineBelongsToParent($routine_id, $family_root_id)) {
+        return ['type' => 'error', 'text' => 'Unable to complete routine for this child.'];
+    }
+    $routineData = getRoutineWithTasks($routine_id);
+    if (!$routineData) {
+        return ['type' => 'error', 'text' => 'Routine could not be loaded.'];
+    }
+    $childId = (int) ($routineData['child_user_id'] ?? 0);
+    $todayDate = date('Y-m-d');
+    if ($childId > 0) {
+        ensureRoutinePointsLogsTable();
+        $logStmt = $db->prepare("SELECT created_at FROM routine_points_logs WHERE routine_id = :routine_id AND child_user_id = :child_id AND DATE(created_at) = :today ORDER BY created_at DESC LIMIT 1");
+        $logStmt->execute([':routine_id' => $routine_id, ':child_id' => $childId, ':today' => $todayDate]);
+        $lastCompletion = $logStmt->fetchColumn();
+        if ($lastCompletion) {
+            return ['type' => 'error', 'text' => 'Routine already completed today at ' . date('m/d/Y h:i A', strtotime($lastCompletion)) . '.'];
+        }
+    }
+    $tasks = $routineData['tasks'] ?? [];
+    $taskMap = [];
+    $completedTodayMap = [];
+    foreach ($tasks as $task) {
+        $taskId = (int) $task['id'];
+        $taskMap[$taskId] = $task;
+        $completedAt = $task['completed_at'] ?? null;
+        $completedToday = !empty($completedAt)
+            && ($task['status'] ?? 'pending') === 'completed'
+            && date('Y-m-d', strtotime($completedAt)) === $todayDate;
+        $completedTodayMap[$taskId] = $completedToday;
+    }
+    $selected = array_values(array_unique(array_filter($selected, static function ($id) use ($taskMap) {
+        return isset($taskMap[$id]);
+    })));
+    $awardedPoints = 0;
+    $completionTimestampMap = [];
+    foreach ($tasks as $task) {
+        $taskId = (int) $task['id'];
+        $isSelected = in_array($taskId, $selected, true);
+        $completedAtValue = null;
+        if ($isSelected) {
+            if (!empty($completedTodayMap[$taskId]) && !empty($taskMap[$taskId]['completed_at'])) {
+                $completedAtValue = $taskMap[$taskId]['completed_at'];
+            } elseif (!empty($completed_at_map[$taskId])) {
+                $completedAtValue = date('Y-m-d H:i:s', (int) floor($completed_at_map[$taskId] / 1000));
+            } else {
+                $completedAtValue = date('Y-m-d H:i:s');
+            }
+            $completionTimestampMap[$taskId] = $completedAtValue;
+            if (empty($completedTodayMap[$taskId])) {
+                $awardedPoints += max(0, (int) ($task['point_value'] ?? $task['points'] ?? 0));
+            }
+        }
+        setRoutineTaskStatus($routine_id, $taskId, $isSelected ? 'completed' : 'pending', $completedAtValue);
+    }
+    if ($awardedPoints > 0 && $childId > 0) {
+        updateChildPoints($childId, $awardedPoints);
+    }
+    $bonusAwarded = 0;
+    if ($childId > 0) {
+        $bonusAwarded = completeRoutine($routine_id, $childId, $grant_bonus);
+    }
+    if ($childId > 0 && ($awardedPoints > 0 || $bonusAwarded > 0)) {
+        logRoutinePointsAward($routine_id, $childId, $awardedPoints, $bonusAwarded);
+        $parentIdForLog = (int) ($routineData['parent_user_id'] ?? 0);
+        if ($parentIdForLog > 0) {
+            $parentStartedAt = null;
+            $parentCompletedAt = null;
+            if (!empty($completionTimestampMap)) {
+                $timestamps = array_filter(array_map('strtotime', $completionTimestampMap), static fn($v) => $v !== false);
+                if (!empty($timestamps)) {
+                    $parentStartedAt = date('Y-m-d H:i:s', min($timestamps));
+                    $parentCompletedAt = date('Y-m-d H:i:s', max($timestamps));
+                }
+            }
+            $completionTasks = [];
+            foreach ($tasks as $task) {
+                $taskId = (int) ($task['id'] ?? 0);
+                if (!in_array($taskId, $selected, true)) {
+                    continue;
+                }
+                $completionTasks[] = [
+                    'routine_task_id' => $taskId,
+                    'sequence_order'  => (int) ($task['sequence_order'] ?? 0),
+                    'completed_at'    => $completionTimestampMap[$taskId] ?? null,
+                    'scheduled_seconds'    => null,
+                    'actual_seconds'       => null,
+                    'status_screen_seconds' => 0,
+                    'stars_awarded'        => 0
+                ];
+            }
+            logRoutineCompletionSession($routine_id, $childId, $parentIdForLog, 'parent', $parentStartedAt, $parentCompletedAt, $completionTasks);
+            updateChildLevelState($childId, $parentIdForLog, true);
+        }
+    }
+    $summaryParts = [];
+    if ($awardedPoints > 0) {
+        $summaryParts[] = "{$awardedPoints} routine points applied";
+    }
+    if ($grant_bonus && $bonusAwarded > 0) {
+        $summaryParts[] = "{$bonusAwarded} bonus points added";
+    } elseif ($grant_bonus && $bonusAwarded === 0 && (int) ($routineData['bonus_points'] ?? 0) > 0) {
+        $summaryParts[] = 'Bonus points not available outside the routine window';
+    } elseif (!$grant_bonus && (int) ($routineData['bonus_points'] ?? 0) > 0) {
+        $summaryParts[] = 'Bonus points not granted';
+    }
+    if (empty($summaryParts)) {
+        $summaryParts[] = 'No points were awarded';
+    }
+    return ['type' => 'success', 'text' => 'Routine updated manually: ' . implode('. ', $summaryParts) . '.'];
 }
 
 // Approve a task
@@ -3925,6 +4051,55 @@ function getChildTotalPoints($child_id) {
         error_log("Failed to fetch points for child $child_id: " . $e->getMessage());
         return 0;
     }
+}
+
+// Manually adjust a child's point balance, log the adjustment, and notify the child.
+// Returns a human-readable result message.
+function adjustChildPoints(int $child_id, int $delta, string $reason, int $created_by): string {
+    global $db;
+    $reason = $reason !== '' ? substr($reason, 0, 255) : 'Manual adjustment';
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS child_point_adjustments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            child_user_id INT NOT NULL,
+            delta_points INT NOT NULL,
+            reason VARCHAR(255) NOT NULL,
+            created_by INT NOT NULL,
+            created_at DATETIME NOT NULL,
+            INDEX idx_child_created (child_user_id, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+    updateChildPoints($child_id, $delta);
+    $stmt = $db->prepare("INSERT INTO child_point_adjustments (child_user_id, delta_points, reason, created_by, created_at) VALUES (:child_id, :delta, :reason, :created_by, NOW())");
+    $stmt->execute([':child_id' => $child_id, ':delta' => $delta, ':reason' => $reason, ':created_by' => $created_by]);
+    addChildNotification(
+        $child_id,
+        $delta > 0 ? 'points_added' : 'points_deducted',
+        ($delta > 0 ? 'You received ' : 'You lost ') . abs($delta) . ' points: ' . $reason,
+        'dashboard_child.php'
+    );
+    $sign = $delta > 0 ? 'added' : 'deducted';
+    return ucfirst($sign) . ' ' . abs($delta) . ' points. Reason: ' . htmlspecialchars($reason);
+}
+
+// Manually adjust a child's star balance, log the adjustment, and notify the child.
+// Returns a human-readable result message including the child's current level.
+function adjustChildStars(int $child_id, int $delta, string $reason, int $created_by, int $main_parent_id): string {
+    global $db;
+    $reason = $reason !== '' ? substr($reason, 0, 255) : 'Manual star adjustment';
+    ensureChildStarAdjustmentsTable();
+    $stmt = $db->prepare("INSERT INTO child_star_adjustments (child_user_id, delta_stars, reason, created_by, created_at) VALUES (:child_id, :delta, :reason, :created_by, NOW())");
+    $stmt->execute([':child_id' => $child_id, ':delta' => $delta, ':reason' => $reason, ':created_by' => $created_by]);
+    $levelState = getChildLevelState($child_id, $main_parent_id);
+    addChildNotification(
+        $child_id,
+        $delta > 0 ? 'stars_added' : 'stars_deducted',
+        ($delta > 0 ? 'You received ' : 'You lost ') . abs($delta) . ' stars: ' . $reason,
+        'dashboard_child.php'
+    );
+    $sign = $delta > 0 ? 'added' : 'deducted';
+    return ucfirst($sign) . ' ' . abs($delta) . ' stars. Reason: ' . htmlspecialchars($reason)
+        . ' Current level: ' . (int) ($levelState['level'] ?? 1) . '.';
 }
 
 // **[Revised] Routine Functions (now use routine_task_id instead of task_id) **

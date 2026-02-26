@@ -220,6 +220,138 @@ try {
     error_log("Failed to load routine completion logs: " . $e->getMessage());
 }
 
+// Approve a pending task from a parent notification.
+// Returns a result message string.
+function handleApproveTaskFromNotification(int $task_id, int $main_parent_id): string {
+    global $db;
+    if (!$task_id) {
+        return 'Invalid task approval request.';
+    }
+    $instanceMap = $_POST['instance_date_map'] ?? [];
+    $parentMap   = $_POST['parent_notification_map'] ?? [];
+    $instance_date          = !empty($instanceMap[$task_id]) ? trim((string) $instanceMap[$task_id]) : null;
+    $parent_notification_id = !empty($parentMap[$task_id])   ? (int) $parentMap[$task_id] : null;
+    $taskStmt = $db->prepare("SELECT parent_user_id, status, recurrence FROM tasks WHERE id = :id LIMIT 1");
+    $taskStmt->execute([':id' => $task_id]);
+    $taskRow = $taskStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$taskRow || (int) $taskRow['parent_user_id'] !== $main_parent_id) {
+        return 'Task is no longer waiting approval.';
+    }
+    $taskIsRecurring = !empty($taskRow['recurrence']);
+    $instanceDateToUse = $instance_date;
+    $instanceStatus    = null;
+    if ($taskIsRecurring) {
+        if ($instanceDateToUse) {
+            $instStmt = $db->prepare("SELECT status FROM task_instances WHERE task_id = :id AND date_key = :date_key LIMIT 1");
+            $instStmt->execute([':id' => $task_id, ':date_key' => $instanceDateToUse]);
+            $instanceStatus = $instStmt->fetchColumn();
+        } else {
+            $instStmt = $db->prepare("SELECT date_key, status FROM task_instances WHERE task_id = :id AND status = 'completed' ORDER BY completed_at DESC LIMIT 1");
+            $instStmt->execute([':id' => $task_id]);
+            $instRow           = $instStmt->fetch(PDO::FETCH_ASSOC);
+            $instanceStatus    = $instRow['status'] ?? null;
+            $instanceDateToUse = $instRow['date_key'] ?? null;
+        }
+    }
+    $canApprove = $taskIsRecurring ? ($instanceStatus === 'completed') : (($taskRow['status'] ?? '') === 'completed');
+    if (!$canApprove) {
+        return 'Task is no longer waiting approval.';
+    }
+    if (!approveTask($task_id, $instanceDateToUse)) {
+        return 'Failed to approve task.';
+    }
+    if ($parent_notification_id) {
+        ensureParentNotificationsTable();
+        $mark = $db->prepare("UPDATE parent_notifications SET is_read = 1 WHERE id = :id AND parent_user_id = :pid");
+        $mark->execute([':id' => $parent_notification_id, ':pid' => $main_parent_id]);
+    }
+    return 'Task approved!';
+}
+
+// Fulfill a redeemed reward, update the notification, and return a result message.
+function handleFulfillReward(int $main_parent_id, int $actor_user_id): string {
+    global $db;
+    $rewardPayload = $_POST['fulfill_reward'] ?? '';
+    $reward_id = 0;
+    $parent_notification_id = 0;
+    if (is_string($rewardPayload) && strpos($rewardPayload, '|') !== false) {
+        [$rewardIdRaw, $noteIdRaw] = explode('|', $rewardPayload, 2);
+        $reward_id              = (int) $rewardIdRaw;
+        $parent_notification_id = (int) $noteIdRaw;
+    } else {
+        $reward_id              = filter_var($rewardPayload, FILTER_VALIDATE_INT) ?: 0;
+        $parent_notification_id = (int) (filter_input(INPUT_POST, 'parent_notification_id', FILTER_VALIDATE_INT) ?: 0);
+    }
+    if (!$reward_id) {
+        $reward_id = (int) (filter_input(INPUT_POST, 'reward_id', FILTER_VALIDATE_INT) ?: 0);
+    }
+    $fulfilled = $reward_id && fulfillReward($reward_id, $main_parent_id, $actor_user_id);
+    if (!$fulfilled && $reward_id) {
+        $statusStmt = $db->prepare("SELECT fulfilled_on FROM rewards WHERE id = :id AND parent_user_id = :parent_id");
+        $statusStmt->execute([':id' => $reward_id, ':parent_id' => $main_parent_id]);
+        $fulfilled = !empty($statusStmt->fetchColumn());
+    }
+    if ($fulfilled && $parent_notification_id) {
+        ensureParentNotificationsTable();
+        $titleStmt = $db->prepare("SELECT title FROM rewards WHERE id = :id");
+        $titleStmt->execute([':id' => $reward_id]);
+        $rewardTitle     = $titleStmt->fetchColumn() ?: 'Reward';
+        $resolvedMessage = 'Reward fulfilled: ' . $rewardTitle . ' | ' . date('m/d/Y h:i A');
+        $db->prepare("UPDATE parent_notifications SET type = 'reward_fulfilled', message = :message, is_read = 1 WHERE id = :id AND parent_user_id = :pid")
+           ->execute([':message' => $resolvedMessage, ':id' => $parent_notification_id, ':pid' => $main_parent_id]);
+    }
+    return $fulfilled ? 'Reward fulfillment recorded.' : 'Unable to mark reward as fulfilled.';
+}
+
+// Deny a redeemed reward request, update the notification, and return a result message.
+function handleDenyReward(int $main_parent_id, int $actor_user_id): string {
+    global $db;
+    $denyPayload = $_POST['deny_reward'] ?? '';
+    $reward_id = 0;
+    $parent_notification_id = 0;
+    if (is_string($denyPayload) && strpos($denyPayload, '|') !== false) {
+        [$rewardIdRaw, $noteIdRaw] = explode('|', $denyPayload, 2);
+        $reward_id              = (int) $rewardIdRaw;
+        $parent_notification_id = (int) $noteIdRaw;
+    } else {
+        $reward_id              = filter_var($denyPayload, FILTER_VALIDATE_INT) ?: 0;
+        $parent_notification_id = (int) (filter_input(INPUT_POST, 'parent_notification_id', FILTER_VALIDATE_INT) ?: 0);
+    }
+    if (!$reward_id) {
+        $reward_id = (int) (filter_input(INPUT_POST, 'reward_id', FILTER_VALIDATE_INT) ?: 0);
+    }
+    $deny_note = '';
+    if ($parent_notification_id && !empty($_POST['deny_reward_note']) && is_array($_POST['deny_reward_note'])) {
+        $noteMap = $_POST['deny_reward_note'];
+        if (array_key_exists((string) $parent_notification_id, $noteMap)) {
+            $deny_note = trim((string) $noteMap[(string) $parent_notification_id]);
+        }
+    }
+    if ($deny_note === '') {
+        $deny_note = trim((string)($_POST['deny_reward_note'] ?? ''));
+    }
+    $denied = $reward_id && denyReward($reward_id, $main_parent_id, $actor_user_id, $deny_note);
+    if (!$denied && $reward_id) {
+        $statusStmt = $db->prepare("SELECT status, denied_on FROM rewards WHERE id = :id AND parent_user_id = :parent_id");
+        $statusStmt->execute([':id' => $reward_id, ':parent_id' => $main_parent_id]);
+        $statusRow = $statusStmt->fetch(PDO::FETCH_ASSOC);
+        $denied    = !empty($statusRow) && ($statusRow['status'] ?? '') === 'available' && !empty($statusRow['denied_on']);
+    }
+    if ($denied && $parent_notification_id) {
+        ensureParentNotificationsTable();
+        $titleStmt = $db->prepare("SELECT title FROM rewards WHERE id = :id");
+        $titleStmt->execute([':id' => $reward_id]);
+        $rewardTitle     = $titleStmt->fetchColumn() ?: 'Reward';
+        $resolvedMessage = 'Reward denied: ' . $rewardTitle . ' | ' . date('m/d/Y h:i A');
+        if ($deny_note !== '') {
+            $resolvedMessage .= ' | Reason: ' . $deny_note;
+        }
+        $db->prepare("UPDATE parent_notifications SET type = 'reward_denied', message = :message, is_read = 1 WHERE id = :id AND parent_user_id = :pid")
+           ->execute([':message' => $resolvedMessage, ':id' => $parent_notification_id, ':pid' => $main_parent_id]);
+    }
+    return $denied ? 'Reward request denied.' : 'Unable to deny reward request.';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['mark_parent_notifications_read'])) {
         $ids = array_map('intval', $_POST['parent_notification_ids'] ?? []);
@@ -275,61 +407,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $parentNotificationActionTab = 'deleted';
         }
     } elseif (isset($_POST['approve_task_notification'])) {
-        $task_id = isset($_POST['approve_task_notification']) ? (int) $_POST['approve_task_notification'] : 0;
-        $parent_notification_id = null;
-        $instance_date = null;
-        if ($task_id) {
-            $instanceMap = $_POST['instance_date_map'] ?? [];
-            $parentMap = $_POST['parent_notification_map'] ?? [];
-            if (!empty($instanceMap[$task_id])) {
-                $instance_date = trim((string)$instanceMap[$task_id]);
-            }
-            if (!empty($parentMap[$task_id])) {
-                $parent_notification_id = (int) $parentMap[$task_id];
-            }
-        }
-        if ($task_id) {
-            $taskStmt = $db->prepare("SELECT parent_user_id, status, recurrence FROM tasks WHERE id = :id LIMIT 1");
-            $taskStmt->execute([':id' => $task_id]);
-            $taskRow = $taskStmt->fetch(PDO::FETCH_ASSOC);
-            if ($taskRow && (int) $taskRow['parent_user_id'] === (int) $main_parent_id) {
-                $taskIsRecurring = !empty($taskRow['recurrence']);
-                $instanceStatus = null;
-                $instanceDateToUse = $instance_date ?: null;
-                if ($taskIsRecurring) {
-                    if ($instanceDateToUse) {
-                        $instStmt = $db->prepare("SELECT status FROM task_instances WHERE task_id = :id AND date_key = :date_key LIMIT 1");
-                        $instStmt->execute([':id' => $task_id, ':date_key' => $instanceDateToUse]);
-                        $instanceStatus = $instStmt->fetchColumn();
-                    } else {
-                        $instStmt = $db->prepare("SELECT date_key, status FROM task_instances WHERE task_id = :id AND status = 'completed' ORDER BY completed_at DESC LIMIT 1");
-                        $instStmt->execute([':id' => $task_id]);
-                        $instRow = $instStmt->fetch(PDO::FETCH_ASSOC);
-                        $instanceStatus = $instRow['status'] ?? null;
-                        $instanceDateToUse = $instRow['date_key'] ?? null;
-                    }
-                }
-                $canApprove = $taskIsRecurring ? ($instanceStatus === 'completed') : (($taskRow['status'] ?? '') === 'completed');
-                if ($canApprove) {
-                    if (approveTask($task_id, $instanceDateToUse)) {
-                        $message = "Task approved!";
-                        if ($parent_notification_id) {
-                            ensureParentNotificationsTable();
-                            $mark = $db->prepare("UPDATE parent_notifications SET is_read = 1 WHERE id = :id AND parent_user_id = :pid");
-                            $mark->execute([':id' => $parent_notification_id, ':pid' => $main_parent_id]);
-                        }
-                    } else {
-                        $message = "Failed to approve task.";
-                    }
-                } else {
-                    $message = "Task is no longer waiting approval.";
-                }
-            } else {
-                $message = "Task is no longer waiting approval.";
-            }
-        } else {
-            $message = "Invalid task approval request.";
-        }
+        $task_id = (int) ($_POST['approve_task_notification'] ?? 0);
+        $message = handleApproveTaskFromNotification($task_id, (int) $main_parent_id);
     } elseif (isset($_POST['create_reward'])) {
         $title = trim((string)($_POST['reward_title'] ?? ''));
         $description = trim((string)($_POST['reward_description'] ?? ''));
@@ -377,40 +456,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $child_user_id = filter_input(INPUT_POST, 'child_user_id', FILTER_VALIDATE_INT);
             $points_delta_raw = filter_input(INPUT_POST, 'points_delta', FILTER_VALIDATE_INT);
-            $point_reason = trim(trim((string)($_POST['point_reason'] ?? '')) ?? '');
+            $point_reason = trim((string)($_POST['point_reason'] ?? ''));
             if (!$child_user_id || $points_delta_raw === false || $points_delta_raw === null || $points_delta_raw == 0) {
                 $message = "Enter a non-zero point amount.";
             } else {
-                $point_reason = $point_reason !== '' ? substr($point_reason, 0, 255) : 'Manual adjustment';
-                $points_delta = (int) $points_delta_raw;
-                // Ensure log table exists (idempotent)
-                $db->exec("
-                    CREATE TABLE IF NOT EXISTS child_point_adjustments (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        child_user_id INT NOT NULL,
-                        delta_points INT NOT NULL,
-                        reason VARCHAR(255) NOT NULL,
-                        created_by INT NOT NULL,
-                        created_at DATETIME NOT NULL,
-                        INDEX idx_child_created (child_user_id, created_at)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-                ");
-                updateChildPoints($child_user_id, $points_delta);
-                $stmt = $db->prepare("INSERT INTO child_point_adjustments (child_user_id, delta_points, reason, created_by, created_at) VALUES (:child_id, :delta, :reason, :created_by, NOW())");
-                $stmt->execute([
-                    ':child_id' => $child_user_id,
-                    ':delta' => $points_delta,
-                    ':reason' => $point_reason,
-                    ':created_by' => $_SESSION['user_id']
-                ]);
-                addChildNotification(
-                    (int)$child_user_id,
-                    $points_delta > 0 ? 'points_added' : 'points_deducted',
-                    ($points_delta > 0 ? 'You received ' : 'You lost ') . abs($points_delta) . ' points: ' . $point_reason,
-                    'dashboard_child.php'
-                );
-                $sign = $points_delta > 0 ? 'added' : 'deducted';
-                $message = ucfirst($sign) . " " . abs($points_delta) . " points. Reason: " . htmlspecialchars($point_reason);
+                $message = adjustChildPoints((int) $child_user_id, (int) $points_delta_raw, $point_reason, (int) $_SESSION['user_id']);
             }
         }
     } elseif (isset($_POST['adjust_child_stars'])) {
@@ -419,30 +469,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $child_user_id = filter_input(INPUT_POST, 'child_user_id', FILTER_VALIDATE_INT);
             $stars_delta_raw = filter_input(INPUT_POST, 'stars_delta', FILTER_VALIDATE_INT);
-            $star_reason = trim(trim((string)($_POST['star_reason'] ?? '')) ?? '');
+            $star_reason = trim((string)($_POST['star_reason'] ?? ''));
             if (!$child_user_id || $stars_delta_raw === false || $stars_delta_raw === null || $stars_delta_raw == 0) {
                 $message = "Enter a non-zero star amount.";
             } else {
-                $star_reason = $star_reason !== '' ? substr($star_reason, 0, 255) : 'Manual star adjustment';
-                $stars_delta = (int) $stars_delta_raw;
-                ensureChildStarAdjustmentsTable();
-                $stmt = $db->prepare("INSERT INTO child_star_adjustments (child_user_id, delta_stars, reason, created_by, created_at) VALUES (:child_id, :delta, :reason, :created_by, NOW())");
-                $stmt->execute([
-                    ':child_id' => $child_user_id,
-                    ':delta' => $stars_delta,
-                    ':reason' => $star_reason,
-                    ':created_by' => $_SESSION['user_id']
-                ]);
-                $levelState = getChildLevelState((int) $child_user_id, (int) $main_parent_id);
-                addChildNotification(
-                    (int)$child_user_id,
-                    $stars_delta > 0 ? 'stars_added' : 'stars_deducted',
-                    ($stars_delta > 0 ? 'You received ' : 'You lost ') . abs($stars_delta) . ' stars: ' . $star_reason,
-                    'dashboard_child.php'
-                );
-                $sign = $stars_delta > 0 ? 'added' : 'deducted';
-                $message = ucfirst($sign) . " " . abs($stars_delta) . " stars. Reason: " . htmlspecialchars($star_reason)
-                    . " Current level: " . (int) ($levelState['level'] ?? 1) . ".";
+                $message = adjustChildStars((int) $child_user_id, (int) $stars_delta_raw, $star_reason, (int) $_SESSION['user_id'], (int) $main_parent_id);
             }
         }
     } elseif (isset($_POST['approve_goal']) || isset($_POST['reject_goal'])) {
@@ -465,90 +496,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif (isset($_POST['fulfill_reward'])) {
-        $rewardPayload = $_POST['fulfill_reward'] ?? '';
-        $reward_id = 0;
-        $parent_notification_id = 0;
-        if (is_string($rewardPayload) && strpos($rewardPayload, '|') !== false) {
-            [$rewardIdRaw, $noteIdRaw] = explode('|', $rewardPayload, 2);
-            $reward_id = (int) $rewardIdRaw;
-            $parent_notification_id = (int) $noteIdRaw;
-        } else {
-            $reward_id = filter_var($rewardPayload, FILTER_VALIDATE_INT) ?: 0;
-            $parent_notification_id = filter_input(INPUT_POST, 'parent_notification_id', FILTER_VALIDATE_INT);
-        }
-        if (!$reward_id) {
-            $reward_id = filter_input(INPUT_POST, 'reward_id', FILTER_VALIDATE_INT);
-        }
-        $fulfilled = ($reward_id && fulfillReward($reward_id, $main_parent_id, $_SESSION['user_id']));
-        if (!$fulfilled && $reward_id) {
-            $statusStmt = $db->prepare("SELECT status, fulfilled_on FROM rewards WHERE id = :id AND parent_user_id = :parent_id");
-            $statusStmt->execute([':id' => $reward_id, ':parent_id' => $main_parent_id]);
-            $statusRow = $statusStmt->fetch(PDO::FETCH_ASSOC);
-            if (!empty($statusRow) && !empty($statusRow['fulfilled_on'])) {
-                $fulfilled = true;
-            }
-        }
-        $message = $fulfilled ? "Reward fulfillment recorded." : "Unable to mark reward as fulfilled.";
-        if ($fulfilled && $parent_notification_id) {
-            ensureParentNotificationsTable();
-            $rewardTitleStmt = $db->prepare("SELECT title FROM rewards WHERE id = :id");
-            $rewardTitleStmt->execute([':id' => $reward_id]);
-            $rewardTitle = $rewardTitleStmt->fetchColumn() ?: 'Reward';
-            $resolvedMessage = 'Reward fulfilled: ' . $rewardTitle . ' | ' . date('m/d/Y h:i A');
-            $update = $db->prepare("UPDATE parent_notifications SET type = 'reward_fulfilled', message = :message, is_read = 1 WHERE id = :id AND parent_user_id = :pid");
-            $update->execute([':message' => $resolvedMessage, ':id' => $parent_notification_id, ':pid' => $main_parent_id]);
-            $mark = $db->prepare("UPDATE parent_notifications SET is_read = 1 WHERE id = :id AND parent_user_id = :pid");
-            $mark->execute([':id' => $parent_notification_id, ':pid' => $main_parent_id]);
-        }
+        $message = handleFulfillReward((int) $main_parent_id, (int) $_SESSION['user_id']);
     } elseif (isset($_POST['deny_reward'])) {
-        $denyPayload = $_POST['deny_reward'] ?? '';
-        $reward_id = 0;
-        $parent_notification_id = 0;
-        if (is_string($denyPayload) && strpos($denyPayload, '|') !== false) {
-            [$rewardIdRaw, $noteIdRaw] = explode('|', $denyPayload, 2);
-            $reward_id = (int) $rewardIdRaw;
-            $parent_notification_id = (int) $noteIdRaw;
-        } else {
-            $reward_id = filter_var($denyPayload, FILTER_VALIDATE_INT) ?: 0;
-            $parent_notification_id = filter_input(INPUT_POST, 'parent_notification_id', FILTER_VALIDATE_INT);
-        }
-        if (!$reward_id) {
-            $reward_id = filter_input(INPUT_POST, 'reward_id', FILTER_VALIDATE_INT);
-        }
-        $deny_note = '';
-        if ($parent_notification_id && !empty($_POST['deny_reward_note']) && is_array($_POST['deny_reward_note'])) {
-            $noteMap = $_POST['deny_reward_note'];
-            if (array_key_exists((string) $parent_notification_id, $noteMap)) {
-                $deny_note = trim((string) trim((string)$noteMap[(string) $parent_notification_id]));
-            }
-        }
-        if ($deny_note === '') {
-            $deny_note = trim(trim((string)($_POST['deny_reward_note'] ?? '')) ?? '');
-        }
-        $denied = ($reward_id && denyReward($reward_id, $main_parent_id, $_SESSION['user_id'], $deny_note));
-        if (!$denied && $reward_id) {
-            $statusStmt = $db->prepare("SELECT status, denied_on FROM rewards WHERE id = :id AND parent_user_id = :parent_id");
-            $statusStmt->execute([':id' => $reward_id, ':parent_id' => $main_parent_id]);
-            $statusRow = $statusStmt->fetch(PDO::FETCH_ASSOC);
-            if (!empty($statusRow) && ($statusRow['status'] ?? '') === 'available' && !empty($statusRow['denied_on'])) {
-                $denied = true;
-            }
-        }
-        $message = $denied ? "Reward request denied." : "Unable to deny reward request.";
-        if ($denied && $parent_notification_id) {
-            ensureParentNotificationsTable();
-            $rewardTitleStmt = $db->prepare("SELECT title FROM rewards WHERE id = :id");
-            $rewardTitleStmt->execute([':id' => $reward_id]);
-            $rewardTitle = $rewardTitleStmt->fetchColumn() ?: 'Reward';
-            $resolvedMessage = 'Reward denied: ' . $rewardTitle . ' | ' . date('m/d/Y h:i A');
-            if ($deny_note !== '') {
-                $resolvedMessage .= ' | Reason: ' . $deny_note;
-            }
-            $update = $db->prepare("UPDATE parent_notifications SET type = 'reward_denied', message = :message, is_read = 1 WHERE id = :id AND parent_user_id = :pid");
-            $update->execute([':message' => $resolvedMessage, ':id' => $parent_notification_id, ':pid' => $main_parent_id]);
-            $mark = $db->prepare("UPDATE parent_notifications SET is_read = 1 WHERE id = :id AND parent_user_id = :pid");
-            $mark->execute([':id' => $parent_notification_id, ':pid' => $main_parent_id]);
-        }
+        $message = handleDenyReward((int) $main_parent_id, (int) $_SESSION['user_id']);
     } elseif (isset($_POST['add_child'])) {
         if (!canAddEditChild($_SESSION['user_id'])) {
             $message = "You do not have permission to add children.";
