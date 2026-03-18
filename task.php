@@ -5,40 +5,25 @@
 // Outputs: Task management interface
 // Version: 3.26.0
 
-session_start(); // Ensure session is started to load existing session
-
+session_start();
 require_once __DIR__ . '/includes/functions.php';
-
-if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
-    exit;
-}
-$currentPage = basename($_SERVER['PHP_SELF']);
-
-// Ensure display name in session for header
-if (!isset($_SESSION['name'])) {
-    $_SESSION['name'] = getDisplayName($_SESSION['user_id']);
-}
-
-$family_root_id = getFamilyRootId($_SESSION['user_id']);
-
-require_once __DIR__ . '/includes/notifications_bootstrap.php';
+require_once __DIR__ . '/includes/page_setup.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['create_task'])) {
         $child_ids = array_map('intval', $_POST['child_user_ids'] ?? []);
         $child_ids = array_values(array_filter($child_ids));
-        $title = filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING);
-        $description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING);
-        $start_date = filter_input(INPUT_POST, 'start_date', FILTER_SANITIZE_STRING);
-        $due_time = filter_input(INPUT_POST, 'due_time', FILTER_SANITIZE_STRING);
+        $title = trim((string)($_POST['title'] ?? ''));
+        $description = trim((string)($_POST['description'] ?? ''));
+        $start_date = trim((string)($_POST['start_date'] ?? ''));
+        $due_time = trim((string)($_POST['due_time'] ?? ''));
         $end_date_enabled = !empty($_POST['end_date_enabled']);
-        $end_date = $end_date_enabled ? filter_input(INPUT_POST, 'end_date', FILTER_SANITIZE_STRING) : null;
+        $end_date = $end_date_enabled ? trim((string)($_POST['end_date'] ?? '')) : null;
         if (empty($start_date)) {
             $start_date = date('Y-m-d');
         }
         $points = filter_input(INPUT_POST, 'points', FILTER_VALIDATE_INT);
-        $repeat = filter_input(INPUT_POST, 'recurrence', FILTER_SANITIZE_STRING);
+        $repeat = trim((string)($_POST['recurrence'] ?? ''));
         $recurrence = $repeat === 'daily' ? 'daily' : ($repeat === 'weekly' ? 'weekly' : '');
         $recurrence_days = null;
         if ($repeat === 'weekly') {
@@ -46,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $days = array_values(array_filter(array_map('trim', (array) $days)));
             $recurrence_days = !empty($days) ? implode(',', $days) : null;
         }
-        $time_of_day_input = filter_input(INPUT_POST, 'time_of_day', FILTER_SANITIZE_STRING);
+        $time_of_day_input = trim((string)($_POST['time_of_day'] ?? ''));
         $time_of_day = in_array($time_of_day_input, ['anytime', 'morning', 'afternoon', 'evening'], true) ? $time_of_day_input : 'anytime';
         $due_date = $start_date;
         if (!empty($due_time)) {
@@ -54,8 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($recurrence === '' && $time_of_day === 'anytime') {
             $due_date .= ' 23:59:00';
         }
-        $category = filter_input(INPUT_POST, 'category', FILTER_SANITIZE_STRING);
-        $timing_mode = filter_input(INPUT_POST, 'timing_mode', FILTER_SANITIZE_STRING);
+        $category = trim((string)($_POST['category'] ?? ''));
+        $timing_mode = trim((string)($_POST['timing_mode'] ?? ''));
         $timer_minutes = filter_input(INPUT_POST, 'timer_minutes', FILTER_VALIDATE_INT);
         if ($timing_mode !== 'timer') {
             $timer_minutes = null;
@@ -78,17 +63,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $task_id = filter_input(INPUT_POST, 'task_id', FILTER_VALIDATE_INT);
         $child_ids = array_map('intval', $_POST['child_user_ids'] ?? []);
         $child_ids = array_values(array_filter($child_ids));
-        $title = filter_input(INPUT_POST, 'title', FILTER_SANITIZE_STRING);
-        $description = filter_input(INPUT_POST, 'description', FILTER_SANITIZE_STRING);
-        $start_date = filter_input(INPUT_POST, 'start_date', FILTER_SANITIZE_STRING);
-        $due_time = filter_input(INPUT_POST, 'due_time', FILTER_SANITIZE_STRING);
+        $title = trim((string)($_POST['title'] ?? ''));
+        $description = trim((string)($_POST['description'] ?? ''));
+        $start_date = trim((string)($_POST['start_date'] ?? ''));
+        $due_time = trim((string)($_POST['due_time'] ?? ''));
         $end_date_enabled = !empty($_POST['end_date_enabled']);
-        $end_date = $end_date_enabled ? filter_input(INPUT_POST, 'end_date', FILTER_SANITIZE_STRING) : null;
+        $end_date = $end_date_enabled ? trim((string)($_POST['end_date'] ?? '')) : null;
         if (empty($start_date)) {
             $start_date = date('Y-m-d');
         }
         $points = filter_input(INPUT_POST, 'points', FILTER_VALIDATE_INT);
-        $repeat = filter_input(INPUT_POST, 'recurrence', FILTER_SANITIZE_STRING);
+        $repeat = trim((string)($_POST['recurrence'] ?? ''));
         $recurrence = $repeat === 'daily' ? 'daily' : ($repeat === 'weekly' ? 'weekly' : '');
         $recurrence_days = null;
         if ($repeat === 'weekly') {
@@ -96,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $days = array_values(array_filter(array_map('trim', (array) $days)));
             $recurrence_days = !empty($days) ? implode(',', $days) : null;
         }
-        $time_of_day_input = filter_input(INPUT_POST, 'time_of_day', FILTER_SANITIZE_STRING);
+        $time_of_day_input = trim((string)($_POST['time_of_day'] ?? ''));
         $time_of_day = in_array($time_of_day_input, ['anytime', 'morning', 'afternoon', 'evening'], true) ? $time_of_day_input : 'anytime';
         $due_date = $start_date;
         if (!empty($due_time)) {
@@ -104,8 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($recurrence === '' && $time_of_day === 'anytime') {
             $due_date .= ' 23:59:00';
         }
-        $category = filter_input(INPUT_POST, 'category', FILTER_SANITIZE_STRING);
-        $timing_mode = filter_input(INPUT_POST, 'timing_mode', FILTER_SANITIZE_STRING);
+        $category = trim((string)($_POST['category'] ?? ''));
+        $timing_mode = trim((string)($_POST['timing_mode'] ?? ''));
         $timer_minutes = filter_input(INPUT_POST, 'timer_minutes', FILTER_VALIDATE_INT);
         if ($timing_mode !== 'timer') {
             $timer_minutes = null;
@@ -168,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['complete_task'])) {
         $task_id = filter_input(INPUT_POST, 'task_id', FILTER_VALIDATE_INT);
-        $instance_date = filter_input(INPUT_POST, 'instance_date', FILTER_SANITIZE_STRING);
+        $instance_date = trim((string)($_POST['instance_date'] ?? ''));
         $photo_proof = null;
         $taskInfoStmt = $db->prepare("SELECT parent_user_id, child_user_id, title, photo_proof_required FROM tasks WHERE id = :id");
         $taskInfoStmt->execute([':id' => $task_id]);
@@ -230,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['approve_task']) && isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id']) && canAddEditChild($_SESSION['user_id'])) {
         $task_id = filter_input(INPUT_POST, 'task_id', FILTER_VALIDATE_INT);
-        $instance_date = filter_input(INPUT_POST, 'instance_date', FILTER_SANITIZE_STRING);
+        $instance_date = trim((string)($_POST['instance_date'] ?? ''));
         if (approveTask($task_id, $instance_date)) {
             $message = "Task approved!";
         } else {
@@ -238,10 +223,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif (isset($_POST['reject_task']) && isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id']) && canAddEditChild($_SESSION['user_id'])) {
         $task_id = filter_input(INPUT_POST, 'task_id', FILTER_VALIDATE_INT);
-        $reject_note = trim((string)filter_input(INPUT_POST, 'reject_note', FILTER_SANITIZE_STRING));
-        $reject_action = filter_input(INPUT_POST, 'reject_action', FILTER_SANITIZE_STRING);
+        $reject_note = trim((string)trim((string)($_POST['reject_note'] ?? '')));
+        $reject_action = trim((string)($_POST['reject_action'] ?? ''));
         $reactivate = $reject_action === 'reactivate';
-        $instance_date = filter_input(INPUT_POST, 'instance_date', FILTER_SANITIZE_STRING);
+        $instance_date = trim((string)($_POST['instance_date'] ?? ''));
         if ($task_id && rejectTask($task_id, $family_root_id, $reject_note, $reactivate, $_SESSION['user_id'], $instance_date)) {
             $message = $reactivate ? "Task rejected and reactivated." : "Task rejected and closed.";
         } else {
@@ -503,14 +488,6 @@ if ($filterStatus !== '') {
     $tasksCount = isset($statusSections[$filterStatus]) ? count($statusSections[$filterStatus]) : 0;
 }
 
-$welcome_role_label = getUserRoleLabel($_SESSION['user_id']);
-if (!$welcome_role_label) {
-    $fallback_role = getEffectiveRole($_SESSION['user_id']) ?: ($_SESSION['role'] ?? null);
-    if ($fallback_role) {
-        $welcome_role_label = ucfirst(str_replace('_', ' ', $fallback_role));
-    }
-}
-
 $bodyClasses = [];
 if (isset($_SESSION['role']) && $_SESSION['role'] === 'child') {
     $bodyClasses[] = 'child-theme';
@@ -551,12 +528,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Management</title>
-      <link rel="stylesheet" href="css/main.css?v=3.26.0">
-    <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<?php $pageTitle = 'Task Management'; include __DIR__ . '/includes/html_head.php'; ?>
     <style>
         .task-form {
             padding: 20px;
@@ -571,11 +543,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
         .routine-section { background: #fff; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 24px; }
         .routine-section-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
         .routine-section-header h2 { margin: 0; font-size: 1.2rem; letter-spacing: 0.02em; }
-        .form-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        .form-group label { font-weight: 600; }
-        .form-group input, .form-group select, .form-group textarea { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
-        .form-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+        /* form-grid, form-group, form-actions → css/shared.css */
         .repeat-group { grid-column: 1 / -1; }
         .repeat-days { display: none; }
         .repeat-days-label { font-weight: 600; padding: 15px 0; }
@@ -633,17 +601,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
             margin-left: 8px;
             display: inline-block;
         } */
-        .button {
-            padding: 10px 20px;
-            margin: 5px;
-            background-color: #4caf50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .button.secondary { background: #619fd0; }
-        .button.danger { background: #e53935; }
+        /* .button, .button.secondary, .button.danger → css/shared.css */
         /* Task card layout aligned to parent mockups */
         .task-card {
             margin-bottom: 20px;
@@ -653,7 +611,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
             box-shadow: 0 6px 16px rgba(0,0,0,0.08);
             overflow: hidden;
         }
-        .task-card[open] { box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
+        /* .task-card[open] { box-shadow: 0 10px 24px rgba(0,0,0,0.12); } */
         .task-card summary { list-style: none; cursor: pointer; }
         .task-card summary::-webkit-details-marker { display: none !important; }
         .task-card summary::marker { content: '' !important; }
@@ -705,6 +663,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
         .task-create-fab { grid-column: 2; grid-row: 1 / span 2; display: flex; justify-content: flex-end; padding: 0; margin: 0; position: static; }
         @media (max-width: 768px) {
             .task-create-fab { top: 16px; right: 16px; }
+            .task-list { padding-left: 0; padding-right: 0; }
         }
         .task-list-title { margin: 0; font-size: 1.8rem; color: #263238; }
         .task-list-subtitle { margin: 0; color: #7a869a; font-weight: 600; }
@@ -728,7 +687,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
         .task-filter-form { display: none; }
         .task-filter-form.is-open { display: grid; }
         .task-reject-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
-        .task-reject-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .task-reject-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1; }
         .task-section-toggle { margin: 18px 0 10px; border-radius: 10px; padding: 0; background: transparent; box-shadow: none; overflow: hidden; }
         .task-section-toggle > summary { cursor: pointer; font-weight: 700; color: #37474f; display: flex; align-items: center; justify-content: space-between; gap: 10px; list-style: none; padding: 8px 4px; transition: color 150ms ease; }
         .task-section-toggle > summary:hover .task-section-title { color: #0d47a1; }
@@ -749,7 +708,8 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
         .task-section-toggle[open] .task-section-content { max-height: 12000px; opacity: 1; transform: translateY(0); }
         .task-approved-view-more { display: flex; justify-content: center; margin: 12px 0 4px; }
         .task-count-badge { background: #ff6f61; color: #fff; border-radius: 12px; padding: 2px 8px; font-size: 0.8rem; font-weight: 700; min-width: 24px; text-align: center; }
-        .task-calendar-section { width: 100%; max-width: 100%; margin: 0 auto 24px; padding: 0 20px; }
+        .task-calendar-section { width: 100%; max-width: 100%; margin: 0 auto 24px; padding: 0; }
+        @media (min-width: 769px) { .task-calendar-section { padding: 0 20px; } }
         .task-calendar-card { background: #fff; border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 16px; display: grid; gap: 16px; }
         .calendar-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
         .calendar-header h2 { margin: 0; font-size: 1.2rem; }
@@ -848,7 +808,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
         .task-photo-proof-label .task-meta-icon { color: #919191; }
         .task-photo-proof-label span { text-align: center; }
         .task-photo-preview { width: 100%; max-height: 70vh; object-fit: contain; border-radius: 10px; }
-        .no-scroll { overflow: hidden; }
+        /* .no-scroll → css/shared.css */
         .task-modal-card header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; }
         .task-modal-card h2 { margin: 0; font-size: 1.1rem; }
         .task-modal-close { background: transparent; border: none; font-size: 1.3rem; cursor: pointer; color: #555; }
@@ -870,7 +830,13 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
          color: #9f9f9f; /*background: #f5f5f5; border-color: #d5def0; color: #757575;*/ }
         .task-reject-form { margin-top: 12px; display: grid; gap: 8px; }
         .task-reject-form textarea { width: 100%; min-height: 70px; resize: vertical; }
-        .task-reject-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+        .task-reject-actions { display: flex; gap: 8px; flex: 1; }
+        .task-reject-actions .button { flex: 1; justify-content: center; }
+        .task-approve-btn { width: 100%; margin-top: 8px; justify-content: center; }
+        .task-modal[data-needs-work-modal] { z-index: 4500; }
+        .needs-work-modal-sub { color: #555; font-size: 0.9rem; margin: 0 0 12px; }
+        .needs-work-modal-textarea { width: 100%; box-sizing: border-box; min-height: 80px; resize: vertical; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 0.95rem; background: #f8f8fc; font-family: inherit; }
+        .needs-work-modal-textarea:focus { outline: none; border-color: #7c3aed; }
         .modal-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
         .timer-controls {
             display: flex;
@@ -885,13 +851,18 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
             background-color: #2196f3;
             color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             user-select: none;
             -webkit-user-select: none;
             -ms-user-select: none;
             -webkit-touch-callout: none;
             touch-action: manipulation;
+        }
+        .task-modal-body button[name="complete_task"],
+        .task-modal-body [data-task-proof-open],
+        .floating-task-actions [data-floating-finish] {
+            border-radius: 8px;
         }
         .timer-cancel-button {
             padding: 10px 20px;
@@ -986,34 +957,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
             z-index: 2;
             pointer-events: none;
         }
-    .page-header { padding: 18px 16px 12px; display: grid; gap: 12px; text-align: left; }
-    .page-header-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-    .page-header-title { display: grid; gap: 6px; }
-    .page-header-title h1 { margin: 0; font-size: 1.2rem; color: #2c2c2c; }
-    .page-header-meta { margin: 0; color: #616161; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.8rem; font-weight: 600; }
-    .page-header-actions { display: flex; gap: 10px; align-items: center; }
-    .page-header-action { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid #dfe8df; background: #fff; color: #6d6d6d; box-shadow: 0 6px 14px rgba(0,0,0,0.08); cursor: pointer; }
-    .page-header-action i { font-size: 1.1rem; }
-    .page-header-action:hover { color: #4caf50; border-color: #c8e6c9; }
-    .nav-links { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; padding: 10px 12px; border-radius: 18px; background: #fff; border: 1px solid #eceff4; box-shadow: 0 8px 18px rgba(0,0,0,0.06); }
-    .nav-link,
-    .nav-mobile-link { flex: 1 1 90px; display: grid; justify-items: center; text-align: center;  gap: 4px; text-decoration: none; color: #6d6d6d; font-weight: 600; font-size: 0.75rem; border-radius: 12px; padding: 6px 4px; }
-    .nav-link i,
-    .nav-mobile-link i { font-size: 1.2rem; }
-    .nav-link.is-active,
-    .nav-mobile-link.is-active { color: #4caf50; }
-    .nav-link.is-active i,
-    .nav-mobile-link.is-active i { color: #4caf50; }
-    .nav-link:hover,
-    .nav-mobile-link:hover { color: #4caf50; }
-    .nav-link-button { background: transparent; border: none; cursor: pointer; }
-    .nav-mobile-bottom { display: none; gap: 6px; padding: 10px 12px; border-top: 1px solid #e0e0e0; background: #fff; position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; }
-    .nav-mobile-bottom .nav-mobile-link { flex: 1; }
-    @media (max-width: 768px) {
-        .nav-links { display: none; }
-        .nav-mobile-bottom { display: flex; justify-content: space-between; }
-        body { padding-bottom: 72px; }
-    }
+    /* page-header, nav-links, nav-mobile-bottom → css/shared.css */
     </style>
     <script>
         const taskCalendarData = <?php echo json_encode($calendarTasks, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
@@ -2831,6 +2775,8 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                 }
             } else if (canManageTasks) {
                 if (statusForView === 'pending') {
+                    const footer = document.createElement('div');
+                    footer.className = 'task-card-footer';
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = 'task.php';
@@ -2848,18 +2794,14 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                     const button = document.createElement('button');
                     button.type = 'submit';
                     button.name = 'complete_task';
-                    button.className = 'button';
+                    button.className = 'button task-card-primary';
                     button.textContent = 'Finish Task';
                     form.appendChild(hidden);
                     form.appendChild(button);
-                    body.appendChild(form);
-
-                    const footer = document.createElement('div');
-                    footer.className = 'task-card-footer';
                     const editButton = document.createElement('button');
                     editButton.type = 'button';
-                    editButton.className = 'button task-card-primary';
-                    editButton.textContent = 'Edit Task';
+                    editButton.className = 'task-card-menu-item';
+                    editButton.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Task';
                     editButton.dataset.taskEditOpen = '';
                     editButton.dataset.taskId = String(task.id);
                     editButton.dataset.childId = String(task.child_user_id || '');
@@ -2885,8 +2827,8 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                     deleteButton.dataset.childName = task.child_name || '';
                     deleteButton.dataset.title = task.title || '';
                     deleteButton.innerHTML = '<i class="fa-regular fa-trash-can"></i> Delete Forever';
-                    footer.appendChild(editButton);
-                    footer.appendChild(buildMenu([duplicateMenuItem, deleteButton]));
+                    footer.appendChild(form);
+                    footer.appendChild(buildMenu([editButton, duplicateMenuItem, deleteButton]));
                     body.appendChild(footer);
                 } else if (statusForView === 'completed') {
                     const approveForm = document.createElement('form');
@@ -2903,19 +2845,11 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                         instanceInput.value = viewDateKey;
                         approveForm.appendChild(instanceInput);
                     }
-                    const approveButton = document.createElement('button');
-                    approveButton.type = 'submit';
-                    approveButton.name = 'approve_task';
-                    approveButton.className = 'button';
-                    approveButton.textContent = 'Review & Approve';
-                    approveForm.appendChild(hidden);
-                    approveForm.appendChild(approveButton);
-                    body.appendChild(approveForm);
-
+                    const rejectFormId = `reject-form-modal-${task.id}`;
                     const rejectForm = document.createElement('form');
                     rejectForm.method = 'POST';
                     rejectForm.action = 'task.php';
-                    rejectForm.className = 'task-reject-form';
+                    rejectForm.id = rejectFormId;
                     const rejectHidden = document.createElement('input');
                     rejectHidden.type = 'hidden';
                     rejectHidden.name = 'task_id';
@@ -2931,35 +2865,38 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                     rejectFlag.type = 'hidden';
                     rejectFlag.name = 'reject_task';
                     rejectFlag.value = '1';
-                    const rejectLabel = document.createElement('label');
-                    rejectLabel.setAttribute('for', `reject_note_modal_${task.id}`);
-                    rejectLabel.textContent = 'Rejection note (optional)';
-                    const rejectNote = document.createElement('textarea');
-                    rejectNote.name = 'reject_note';
-                    rejectNote.id = `reject_note_modal_${task.id}`;
-                    rejectNote.placeholder = 'Explain why this task was rejected.';
+                    rejectForm.appendChild(rejectHidden);
+                    rejectForm.appendChild(rejectFlag);
+                    body.appendChild(rejectForm);
+
                     const rejectActions = document.createElement('div');
                     rejectActions.className = 'task-reject-actions';
                     const reactivateBtn = document.createElement('button');
-                    reactivateBtn.type = 'submit';
-                    reactivateBtn.name = 'reject_action';
-                    reactivateBtn.value = 'reactivate';
+                    reactivateBtn.type = 'button';
                     reactivateBtn.className = 'button secondary';
-                    reactivateBtn.textContent = 'Reject & Reactivate';
+                    reactivateBtn.setAttribute('data-needs-work-open', '');
+                    reactivateBtn.setAttribute('data-form-id', rejectFormId);
+                    reactivateBtn.setAttribute('data-child-name', task.child_name || 'Child');
+                    reactivateBtn.innerHTML = '<i class="fa-regular fa-comment-dots"></i> Needs Work';
                     const closeBtn = document.createElement('button');
                     closeBtn.type = 'submit';
                     closeBtn.name = 'reject_action';
                     closeBtn.value = 'close';
                     closeBtn.className = 'button danger';
-                    closeBtn.textContent = 'Reject & Close';
+                    closeBtn.setAttribute('form', rejectFormId);
+                    closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Reject';
                     rejectActions.appendChild(reactivateBtn);
                     rejectActions.appendChild(closeBtn);
-                    rejectForm.appendChild(rejectHidden);
-                    rejectForm.appendChild(rejectFlag);
-                    rejectForm.appendChild(rejectLabel);
-                    rejectForm.appendChild(rejectNote);
-                    rejectForm.appendChild(rejectActions);
-                    body.appendChild(rejectForm);
+                    body.appendChild(rejectActions);
+
+                    approveForm.appendChild(hidden);
+                    const approveButton = document.createElement('button');
+                    approveButton.type = 'submit';
+                    approveButton.name = 'approve_task';
+                    approveButton.className = 'button task-approve-btn';
+                    approveButton.innerHTML = '<i class="fa-solid fa-circle-check"></i> Approve';
+                    approveForm.appendChild(approveButton);
+                    body.appendChild(approveForm);
                     const footer = document.createElement('div');
                     footer.className = 'task-card-footer';
                     footer.appendChild(document.createElement('div'));
@@ -3070,77 +3007,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
     </script>
 </head>
 <body<?php echo !empty($bodyClasses) ? ' class="' . implode(' ', $bodyClasses) . '"' : ''; ?>>
-    <?php
-        $isParentContext = canCreateContent($_SESSION['user_id']);
-        $dashboardPage = $isParentContext ? 'dashboard_parent.php' : 'dashboard_child.php';
-        $dashboardActive = $currentPage === $dashboardPage;
-        $routinesActive = $currentPage === 'routine.php';
-        $tasksActive = $currentPage === 'task.php';
-        $goalsActive = $currentPage === 'goal.php';
-        $rewardsActive = $currentPage === 'rewards.php';
-        $profileActive = $currentPage === 'profile.php';
-    ?>
-    <header class="page-header">
-        <div class="page-header-top">
-            <div class="page-header-title">
-                <h1>Task Management</h1>
-                <p class="page-header-meta"><?php $hour=(int)date('G'); echo $hour<12?'Good morning,':($hour<18?'Good afternoon,':'Good evening,'); ?> <?php echo htmlspecialchars($_SESSION['name'] ?? $_SESSION['username'] ?? 'Unknown User'); ?>
-                    <?php if (false): // role-badge hidden ?>
-                        <span class="role-badge"><?php echo htmlspecialchars($welcome_role_label); ?></span>
-                    <?php endif; ?>
-                </p>
-            </div>
-            <div class="page-header-actions">
-                <?php if (!empty($isParentNotificationUser)): ?>
-                    <button type="button" class="page-header-action parent-notification-trigger" data-parent-notify-trigger aria-label="Notifications">
-                        <i class="fa-solid fa-bell"></i>
-                        <?php if ($parentNotificationCount > 0): ?>
-                            <span class="parent-notification-badge"><?php echo (int) $parentNotificationCount; ?></span>
-                        <?php endif; ?>
-                    </button>
-                    <a class="nav-family-button page-header-action" href="dashboard_parent.php#manage-family" aria-label="Family settings">
-                        <i class="fa-solid fa-gear"></i>
-                    </a>
-                <?php elseif (!empty($isChildNotificationUser)): ?>
-                    <button type="button" class="page-header-action notification-trigger" data-child-notify-trigger aria-label="Notifications">
-                        <i class="fa-solid fa-bell"></i>
-                        <?php if ($notificationCount > 0): ?>
-                            <span class="notification-badge"><?php echo (int) $notificationCount; ?></span>
-                        <?php endif; ?>
-                    </button>
-                <?php endif; ?>
-                <a class="page-header-action" href="logout.php" aria-label="Logout">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                </a>
-            </div>
-        </div>
-        <nav class="nav-links" aria-label="Primary">
-            <a class="nav-link<?php echo $dashboardActive ? ' is-active' : ''; ?>" href="<?php echo htmlspecialchars($dashboardPage); ?>"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-house"></i>
-                <span>Dashboard</span>
-            </a>
-            <a class="nav-link<?php echo $routinesActive ? ' is-active' : ''; ?>" href="routine.php"<?php echo $routinesActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-repeat week-item-icon"></i>
-                <span>Routines</span>
-            </a>
-            <a class="nav-link<?php echo $tasksActive ? ' is-active' : ''; ?>" href="task.php"<?php echo $tasksActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-list-check"></i>
-                <span>Tasks</span>
-            </a>
-            <a class="nav-link<?php echo $goalsActive ? ' is-active' : ''; ?>" href="goal.php"<?php echo $goalsActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-bullseye"></i>
-                <span>Goals</span>
-            </a>
-            <a class="nav-link<?php echo $rewardsActive ? ' is-active' : ''; ?>" href="rewards.php"<?php echo $rewardsActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-gift"></i>
-                <span>Rewards Shop</span>
-            </a>
-            <a class="nav-link<?php echo $profileActive ? ' is-active' : ''; ?>" href="profile.php?self=1"<?php echo $profileActive ? ' aria-current="page"' : ''; ?>>
-                <i class="fa-solid fa-user"></i>
-                <span>Profile</span>
-            </a>
-        </nav>
-    </header>
+    <?php $pageHeading = 'Task Management'; include __DIR__ . '/includes/page_header.php'; ?>
     <main>
         <?php if (isset($message)) echo "<p>$message</p>"; ?>
         <div class="task-list">
@@ -3600,21 +3467,25 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                                     <?php if (!empty($task['instance_date'])): ?>
                                         <input type="hidden" name="instance_date" value="<?php echo htmlspecialchars($task['instance_date']); ?>">
                                     <?php endif; ?>
-                                    <button type="submit" name="approve_task" class="button">Review &amp; Approve</button>
                                 </form>
-                                <form method="POST" action="task.php" class="task-reject-form" id="reject-form-<?php echo (int) $task['id']; ?>">
+                                <form method="POST" action="task.php" id="reject-form-<?php echo (int) $task['id']; ?>">
                                     <input type="hidden" name="task_id" value="<?php echo $task['id']; ?>">
                                     <input type="hidden" name="reject_task" value="1">
                                     <?php if (!empty($task['instance_date'])): ?>
                                         <input type="hidden" name="instance_date" value="<?php echo htmlspecialchars($task['instance_date']); ?>">
                                     <?php endif; ?>
-                                    <label for="reject_note_<?php echo (int) $task['id']; ?>">Rejection note (optional)</label>
-                                    <textarea id="reject_note_<?php echo (int) $task['id']; ?>" name="reject_note" placeholder="Explain why this task was rejected."></textarea>
                                 </form>
                                 <div class="task-reject-bar">
                                     <div class="task-reject-actions">
-                                        <button type="submit" name="reject_action" value="reactivate" class="button secondary" form="reject-form-<?php echo (int) $task['id']; ?>">Reject &amp; Reactivate</button>
-                                        <button type="submit" name="reject_action" value="close" class="button danger" form="reject-form-<?php echo (int) $task['id']; ?>">Reject &amp; Close</button>
+                                        <button type="button" class="button secondary"
+                                                data-needs-work-open
+                                                data-form-id="reject-form-<?php echo (int) $task['id']; ?>"
+                                                data-child-name="<?php echo htmlspecialchars($childName, ENT_QUOTES); ?>">
+                                            <i class="fa-regular fa-comment-dots"></i> Needs Work
+                                        </button>
+                                        <button type="submit" name="reject_action" value="close" class="button danger" form="reject-form-<?php echo (int) $task['id']; ?>">
+                                            <i class="fa-solid fa-xmark"></i> Reject
+                                        </button>
                                     </div>
                                     <div class="task-card-menu" data-task-menu>
                                         <button type="button" class="task-card-menu-toggle" aria-label="Open task actions" data-task-menu-toggle>
@@ -3645,6 +3516,9 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                                         </div>
                                     </div>
                                 </div>
+                                <button type="submit" name="approve_task" class="button task-approve-btn" form="approve-form-<?php echo (int) $task['id']; ?>">
+                                    <i class="fa-solid fa-circle-check"></i> Approve
+                                </button>
                                     <?php else: ?>
                                         <p class="waiting-label">Waiting for approval</p>
                                     <?php endif; ?>
@@ -3862,6 +3736,22 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                 <div class="task-week-list" data-task-list></div>
             </div>
         </section>
+        <div class="task-modal" id="needs-work-modal" data-needs-work-modal>
+            <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="needs-work-modal-title" style="max-width:440px;">
+                <header>
+                    <h2 id="needs-work-modal-title">Provide Feedback</h2>
+                    <button type="button" class="task-modal-close" data-needs-work-close aria-label="Close">&times;</button>
+                </header>
+                <div class="task-modal-body">
+                    <p id="needs-work-modal-sub" class="needs-work-modal-sub"></p>
+                    <textarea id="needs-work-note-input" name="reject_note" class="needs-work-modal-textarea" placeholder="Feedback for improvement" rows="4"></textarea>
+                    <div class="modal-actions" style="margin-top:14px;">
+                        <button type="button" class="button secondary" data-needs-work-cancel>Cancel</button>
+                        <button type="submit" name="reject_action" value="reactivate" id="needs-work-submit-btn" class="button">Send Feedback</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <?php if (canCreateContent($_SESSION['user_id']) && canAddEditChild($_SESSION['user_id'])): ?>
         <div class="task-modal" data-task-edit-modal>
                 <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="task-edit-title">
@@ -4224,40 +4114,47 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
             </div>
         </div>
         <?php endif; ?>
-    <nav class="nav-mobile-bottom" aria-label="Primary">
-        <a class="nav-mobile-link<?php echo $dashboardActive ? ' is-active' : ''; ?>" href="<?php echo htmlspecialchars($dashboardPage); ?>"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-house"></i>
-            <span>Dashboard</span>
-        </a>
-        <a class="nav-mobile-link<?php echo $routinesActive ? ' is-active' : ''; ?>" href="routine.php"<?php echo $routinesActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-repeat week-item-icon"></i>
-            <span>Routines</span>
-        </a>
-        <a class="nav-mobile-link<?php echo $tasksActive ? ' is-active' : ''; ?>" href="task.php"<?php echo $tasksActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-list-check"></i>
-            <span>Tasks</span>
-        </a>
-        <a class="nav-mobile-link<?php echo $goalsActive ? ' is-active' : ''; ?>" href="goal.php"<?php echo $goalsActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-bullseye"></i>
-            <span>Goals</span>
-        </a>
-        <a class="nav-mobile-link<?php echo $rewardsActive ? ' is-active' : ''; ?>" href="rewards.php"<?php echo $rewardsActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-gift"></i>
-            <span>Rewards Shop</span>
-        </a>
-    </nav>
-    <footer>
-      <p>Child Task and Chore App - Ver 3.26.0</p>
-   </footer>
-  <script src="js/number-stepper.js?v=3.26.0" defer></script>
+    <?php include __DIR__ . '/includes/page_footer.php'; ?>
+  <script src="js/number-stepper.js?v=<?php echo APP_VERSION; ?>" defer></script>
 <?php if (!empty($isParentNotificationUser)): ?>
     <?php include __DIR__ . '/includes/notifications_parent.php'; ?>
 <?php endif; ?>
 <?php if (!empty($isChildNotificationUser)): ?>
     <?php include __DIR__ . '/includes/notifications_child.php'; ?>
 <?php endif; ?>
+    <script>
+    (function () {
+        const modal     = document.getElementById('needs-work-modal');
+        if (!modal) return;
+        const titleEl   = document.getElementById('needs-work-modal-title');
+        const subEl     = document.getElementById('needs-work-modal-sub');
+        const noteEl    = document.getElementById('needs-work-note-input');
+        const submitBtn = document.getElementById('needs-work-submit-btn');
+
+        function openModal(formId, childName) {
+            titleEl.textContent = 'Provide Feedback to ' + childName;
+            subEl.textContent   = 'Help ' + childName + ' improve by providing specific feedback:';
+            noteEl.value = '';
+            noteEl.setAttribute('form', formId);
+            submitBtn.setAttribute('form', formId);
+            modal.classList.add('open');
+            document.body.classList.add('no-scroll');
+            setTimeout(function () { noteEl.focus(); }, 50);
+        }
+
+        function closeModal() {
+            modal.classList.remove('open');
+            document.body.classList.remove('no-scroll');
+        }
+
+        document.addEventListener('click', function (e) {
+            const trigger = e.target.closest('[data-needs-work-open]');
+            if (trigger) { openModal(trigger.dataset.formId, trigger.dataset.childName); return; }
+            if (e.target.closest('[data-needs-work-close]') || e.target.closest('[data-needs-work-cancel]')) { closeModal(); return; }
+            if (e.target === modal) closeModal();
+        });
+    }());
+    </script>
 </body>
 </html>
-
-
 

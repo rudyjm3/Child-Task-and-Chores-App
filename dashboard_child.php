@@ -5,24 +5,18 @@
 // Outputs: Dashboard interface
 // Version: 3.26.0 (Notifications moved to header-triggered modal, Font Awesome icons)
 
+session_start();
 require_once __DIR__ . '/includes/functions.php';
 
-session_start(); // Force session start to load existing session
-error_log("Dashboard Child: user_id=" . (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'null') . ", role=" . (isset($_SESSION['role']) ? $_SESSION['role'] : 'null') . ", session_id=" . session_id() . ", cookie=" . (isset($_SERVER['HTTP_COOKIE']) ? $_SERVER['HTTP_COOKIE'] : 'none'));
+// Child dashboard requires child role
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'child') {
     header("Location: login.php");
     exit;
 }
-$currentPage = basename($_SERVER['PHP_SELF']);
 
-// Ensure friendly display name
-if (!isset($_SESSION['name'])) {
-    $_SESSION['name'] = getDisplayName($_SESSION['user_id']);
-}
+require_once __DIR__ . '/includes/page_setup.php';
 
 $data = getDashboardData($_SESSION['user_id']);
-
-require_once __DIR__ . '/includes/notifications_bootstrap.php';
 
 // Fetch routines for child dashboard
 $routines = getRoutines($_SESSION['user_id']);
@@ -281,11 +275,7 @@ function renderStreakCheckSvg($suffix) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Child Dashboard</title>
-   <link rel="stylesheet" href="css/main.css?v=3.26.0">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+<?php $pageTitle = 'Child Dashboard'; include __DIR__ . '/includes/html_head.php'; ?>
     <style>
         .dashboard { padding: 20px; /*max-width: 720px;*/ max-width: 100%; margin: 0 auto; text-align: center; }
         .points-summary { margin: 20px 0; display: flex; align-items: flex-start; gap: 25px; text-align: left; }
@@ -537,7 +527,7 @@ function renderStreakCheckSvg($suffix) {
             .goal-summary { grid-column: 2; }
             .week-calendar { grid-column: 3; }
         }
-        @media (max-width: 768px) { .dashboard { padding: 10px; } .button { width: 100%; } }
+        @media (max-width: 768px) { .dashboard { padding: 10px 0; } .button { width: 100%; } }
         @media (max-width: 700px) {
             .points-summary { display: flex; flex-direction: column; align-items: center; text-align: center; }
             .points-left { display: contents; }
@@ -546,57 +536,34 @@ function renderStreakCheckSvg($suffix) {
         .week-item-badge.compact { justify-content: center; margin-left: 6px; width: 20px; height: 20px; padding: 0; border-radius: 50%; font-size: 0.65rem; }
         .week-item-badge.overdue { background: #d9534f; }
         .week-item-badge-group { display: inline-flex; align-items: center; }
-        .page-header { padding: 18px 16px 12px; display: grid; gap: 12px; text-align: left; }
-        .page-header-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-        .page-header-title { display: grid; gap: 6px; }
-        .page-header-title h1 { margin: 0; font-size: 1.2rem; color: #2c2c2c; }
-        .page-header-meta { margin: 0; color: #616161; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.8rem; font-weight: 600; }
-        .page-header-actions { display: flex; gap: 10px; align-items: center; }
-        .page-header-action { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid #dfe8df; background: #fff; color: #6d6d6d; box-shadow: 0 6px 14px rgba(0,0,0,0.08); cursor: pointer; }
-        .page-header-action i { font-size: 1.1rem; }
-        .page-header-action:hover { color: #4caf50; border-color: #c8e6c9; }
-        .nav-links { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; padding: 10px 12px; border-radius: 18px; background: #fff; border: 1px solid #eceff4; box-shadow: 0 8px 18px rgba(0,0,0,0.06); }
-        .nav-link,
-        .nav-mobile-link { flex: 1 1 90px; display: grid; justify-items: center; text-align: center; gap: 4px; text-decoration: none; color: #6d6d6d; font-weight: 600; font-size: 0.75rem; border-radius: 12px; padding: 6px 4px; }
-        .nav-link i,
-        .nav-mobile-link i { font-size: 1.2rem; }
-        .nav-link.is-active,
-        .nav-mobile-link.is-active { color: #4caf50; }
-        .nav-link.is-active i,
-        .nav-mobile-link.is-active i { color: #4caf50; }
-        .nav-link:hover,
-        .nav-mobile-link:hover { color: #4caf50; }
-        .nav-link-button { background: transparent; border: none; cursor: pointer; }
-        .nav-mobile-bottom { display: none; gap: 6px; padding: 10px 12px; border-top: 1px solid #e0e0e0; background: #fff; position: fixed; left: 0; right: 0; bottom: 0; z-index: 900; }
-        .nav-mobile-bottom .nav-mobile-link { flex: 1; }
-        @media (max-width: 768px) {
-            .nav-links { display: none; }
-            .nav-mobile-bottom { display: flex; justify-content: space-between; }
-            body { padding-bottom: 72px; }
-        }
-        .no-scroll { overflow: hidden; }
-        .goal-celebration { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(255, 248, 225, 0.92); z-index: 5000; }
+        /* page-header, nav-links, nav-mobile-bottom, .no-scroll → css/shared.css */
+        .goal-celebration { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(255, 248, 225, 0.95); z-index: 5000; }
         .goal-celebration.active { display: flex; }
-        .goal-celebration-card { background: #fff; border-radius: 18px; padding: 24px 26px; text-align: center; box-shadow: 0 18px 40px rgba(0,0,0,0.25); position: relative; animation: pop-in 300ms ease; }
-        .goal-celebration-close { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border: none; border-radius: 50%; background: #f5f5f5; color: #37474f; cursor: pointer; }
+        .goal-confetti-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5001; }
+        .goal-celebration-card { background: #fff; border-radius: 24px; padding: 40px 36px 36px; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.25), 0 0 0 4px rgba(255, 152, 0, 0.15); position: relative; z-index: 5002; animation: goal-pop-in 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275); max-width: 340px; width: 90%; }
+        .goal-celebration-close { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border: none; border-radius: 50%; background: #f5f5f5; color: #37474f; cursor: pointer; font-size: 1.1rem; z-index: 5003; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
         .goal-celebration-close:hover { background: #e0e0e0; }
-        .goal-celebration-icon { font-size: 2.2rem; color: #ff9800; margin-bottom: 8px; }
-        .goal-celebration-title { font-weight: 800; color: #4caf50; margin: 0 0 6px; }
-        .goal-celebration-goal { margin: 0; color: #37474f; font-weight: 700; }
-        .goal-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-        .goal-confetti span { position: absolute; width: 10px; height: 16px; border-radius: 4px; opacity: 0.9; animation: confetti-fall 1400ms ease-in-out forwards; }
-        @keyframes goal-spark {
-            0% { background-position: 200% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        @keyframes confetti-fall {
-            0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            100% { transform: translateY(260px) rotate(160deg); opacity: 0; }
-        }
-        @keyframes pop-in {
-            0% { transform: scale(0.9); opacity: 0; }
+        .goal-celebration-icon { font-size: 4rem; margin-bottom: 12px; animation: goal-icon-bounce 1.2s ease infinite; }
+        .goal-celebration-icon i { background: linear-gradient(135deg, #ff9800, #ffb74d, #ffd54f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 3px 8px rgba(255, 152, 0, 0.4)); }
+        .goal-celebration-icon.is-level i { background: linear-gradient(135deg, #7c4dff, #b388ff, #ea80fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; filter: drop-shadow(0 3px 8px rgba(124, 77, 255, 0.4)); }
+        .goal-celebration-title { font-weight: 900; font-size: 1.6rem; color: #4caf50; margin: 0 0 8px; letter-spacing: -0.01em; }
+        .goal-celebration-title.is-level { color: #7c4dff; }
+        .goal-celebration-goal { margin: 0; color: #37474f; font-weight: 700; font-size: 1.15rem; }
+        .goal-celebration-sparkle { font-size: 1rem; color: #ffd54f; margin-top: 10px; letter-spacing: 6px; animation: goal-sparkle-pulse 1.5s ease-in-out infinite; }
+        @keyframes goal-pop-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            60% { transform: scale(1.05); }
             100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes goal-icon-bounce {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.15) rotate(-5deg); }
+            50% { transform: scale(1) rotate(0deg); }
+            75% { transform: scale(1.1) rotate(5deg); }
+        }
+        @keyframes goal-sparkle-pulse {
+            0%, 100% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
         }
 
         .rewards-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 4100; padding: 14px; }
@@ -891,28 +858,103 @@ function renderStreakCheckSvg($suffix) {
               if (typeof celebrationQueue !== 'undefined' && celebrationQueue.length) {
                   const celebrationModal = document.querySelector('[data-goal-celebration]');
                   const celebrationTitle = document.querySelector('[data-goal-celebration-title]');
-                  const celebrationHeading = celebrationModal ? celebrationModal.querySelector('.goal-celebration-title') : null;
-                  const celebrationIcon = celebrationModal ? celebrationModal.querySelector('.goal-celebration-icon i') : null;
-                  const confettiHost = document.querySelector('[data-goal-confetti]');
+                  const celebrationHeading = document.querySelector('[data-goal-celebration-heading]');
+                  const celebrationIconWrap = document.querySelector('[data-goal-celebration-icon]');
+                  const celebrationIcon = celebrationIconWrap ? celebrationIconWrap.querySelector('i') : null;
+                  const confettiCanvas = document.querySelector('[data-goal-confetti-canvas]');
                   const celebrationClose = document.querySelector('[data-goal-celebration-close]');
-                  const colors = ['#ff7043', '#ffd54f', '#4caf50', '#29b6f6', '#ab47bc'];
-  
-                  const closeCelebration = () => {
-                      if (!celebrationModal) return;
-                      celebrationModal.classList.remove('active');
-                      setTimeout(showNextCelebration, 300);
+                  const ctx = confettiCanvas ? confettiCanvas.getContext('2d') : null;
+                  const confettiColors = ['#ff7043', '#ffd54f', '#4caf50', '#29b6f6', '#ab47bc', '#ff4081', '#7c4dff', '#00e5ff', '#ff6d00', '#76ff03'];
+                  const shapes = ['rect', 'circle', 'strip'];
+                  let particles = [];
+                  let confettiActive = false;
+                  let animFrame = null;
+                  let spawnTimer = null;
+
+                  const resizeCanvas = () => {
+                      if (!confettiCanvas) return;
+                      confettiCanvas.width = window.innerWidth;
+                      confettiCanvas.height = window.innerHeight;
                   };
 
-                  const dropConfetti = () => {
-                      if (!confettiHost) return;
-                      confettiHost.innerHTML = '';
-                      for (let i = 0; i < 18; i += 1) {
-                          const piece = document.createElement('span');
-                          piece.style.left = `${Math.random() * 100}%`;
-                          piece.style.background = colors[i % colors.length];
-                          piece.style.animationDelay = `${Math.random() * 0.4}s`;
-                          confettiHost.appendChild(piece);
+                  const spawnBurst = (count) => {
+                      if (!confettiCanvas) return;
+                      for (let i = 0; i < count; i++) {
+                          particles.push({
+                              x: Math.random() * confettiCanvas.width,
+                              y: -10 - Math.random() * confettiCanvas.height * 0.4,
+                              w: 6 + Math.random() * 10,
+                              h: 8 + Math.random() * 14,
+                              color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
+                              shape: shapes[Math.floor(Math.random() * shapes.length)],
+                              vy: 1.5 + Math.random() * 3,
+                              vx: (Math.random() - 0.5) * 3,
+                              rot: Math.random() * 360,
+                              rotSpeed: (Math.random() - 0.5) * 8,
+                              opacity: 0.85 + Math.random() * 0.15,
+                              wobble: Math.random() * Math.PI * 2,
+                              wobbleSpeed: 0.03 + Math.random() * 0.05
+                          });
                       }
+                  };
+
+                  const drawConfetti = () => {
+                      if (!ctx || !confettiCanvas) return;
+                      ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                      for (let i = particles.length - 1; i >= 0; i--) {
+                          const p = particles[i];
+                          p.x += p.vx + Math.sin(p.wobble) * 0.8;
+                          p.y += p.vy;
+                          p.rot += p.rotSpeed;
+                          p.wobble += p.wobbleSpeed;
+                          if (p.y > confettiCanvas.height + 40) { particles.splice(i, 1); continue; }
+                          ctx.save();
+                          ctx.translate(p.x, p.y);
+                          ctx.rotate(p.rot * Math.PI / 180);
+                          ctx.globalAlpha = p.opacity;
+                          ctx.fillStyle = p.color;
+                          if (p.shape === 'circle') {
+                              ctx.beginPath();
+                              ctx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
+                              ctx.fill();
+                          } else if (p.shape === 'strip') {
+                              ctx.fillRect(-p.w / 2, -p.h / 2, p.w * 0.4, p.h);
+                          } else {
+                              ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                          }
+                          ctx.restore();
+                      }
+                      if (confettiActive) {
+                          animFrame = requestAnimationFrame(drawConfetti);
+                      }
+                  };
+
+                  const startConfetti = () => {
+                      resizeCanvas();
+                      particles = [];
+                      confettiActive = true;
+                      spawnBurst(60);
+                      spawnTimer = setInterval(() => {
+                          if (confettiActive) spawnBurst(25);
+                      }, 700);
+                      drawConfetti();
+                  };
+
+                  const stopConfetti = () => {
+                      confettiActive = false;
+                      if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+                      if (spawnTimer) { clearInterval(spawnTimer); spawnTimer = null; }
+                      particles = [];
+                      if (ctx && confettiCanvas) ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+                  };
+
+                  window.addEventListener('resize', () => { if (confettiActive) resizeCanvas(); });
+
+                  const closeCelebration = () => {
+                      if (!celebrationModal) return;
+                      stopConfetti();
+                      celebrationModal.classList.remove('active');
+                      setTimeout(showNextCelebration, 300);
                   };
 
                   const showNextCelebration = () => {
@@ -921,6 +963,7 @@ function renderStreakCheckSvg($suffix) {
                       if (next.type === 'level') {
                           if (celebrationHeading) {
                               celebrationHeading.textContent = 'Level Up!';
+                              celebrationHeading.classList.add('is-level');
                           }
                           if (celebrationTitle) {
                               celebrationTitle.textContent = 'Level ' + (next.level || 1);
@@ -928,9 +971,13 @@ function renderStreakCheckSvg($suffix) {
                           if (celebrationIcon) {
                               celebrationIcon.className = 'fa-solid fa-star';
                           }
+                          if (celebrationIconWrap) {
+                              celebrationIconWrap.classList.add('is-level');
+                          }
                       } else {
                           if (celebrationHeading) {
                               celebrationHeading.textContent = 'Goal Achieved!';
+                              celebrationHeading.classList.remove('is-level');
                           }
                           if (celebrationTitle) {
                               celebrationTitle.textContent = next.title || 'Goal achieved!';
@@ -938,73 +985,27 @@ function renderStreakCheckSvg($suffix) {
                           if (celebrationIcon) {
                               celebrationIcon.className = 'fa-solid fa-trophy';
                           }
+                          if (celebrationIconWrap) {
+                              celebrationIconWrap.classList.remove('is-level');
+                          }
                       }
-                      dropConfetti();
+                      startConfetti();
                       celebrationModal.classList.add('active');
                   };
 
                   if (celebrationClose) {
                       celebrationClose.addEventListener('click', closeCelebration);
                   }
+                  celebrationModal && celebrationModal.addEventListener('click', (e) => {
+                      if (e.target === celebrationModal) closeCelebration();
+                  });
                   showNextCelebration();
               }
         });
     </script>
 </head>
 <body class="child-theme">
-    <?php
-        $dashboardActive = $currentPage === 'dashboard_child.php';
-        $routinesActive = $currentPage === 'routine.php';
-        $tasksActive = $currentPage === 'task.php';
-        $goalsActive = $currentPage === 'goal.php';
-        $rewardsActive = $currentPage === 'rewards.php';
-        $profileActive = $currentPage === 'profile.php';
-    ?>
-    <header class="page-header">
-     <div class="page-header-top">
-        <div class="page-header-title">
-            <h1>Child Dashboard</h1>
-            <p class="page-header-meta"><?php $hour=(int)date('G'); echo $hour<12?'Good morning,':($hour<18?'Good afternoon,':'Good evening,'); ?> <?php echo htmlspecialchars($_SESSION['name'] ?? $_SESSION['username']); ?></p>
-        </div>
-        <div class="page-header-actions">
-            <button type="button" class="page-header-action notification-trigger" data-child-notify-trigger aria-label="Notifications">
-                <i class="fa-solid fa-bell"></i>
-                <?php if ($notificationCount > 0): ?>
-                    <span class="notification-badge"><?php echo (int)$notificationCount; ?></span>
-                <?php endif; ?>
-            </button>
-            <a class="page-header-action" href="logout.php" aria-label="Logout">
-                <i class="fa-solid fa-right-from-bracket"></i>
-            </a>
-        </div>
-     </div>
-     <nav class="nav-links" aria-label="Primary">
-        <a class="nav-link<?php echo $dashboardActive ? ' is-active' : ''; ?>" href="dashboard_child.php"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-house"></i>
-            <span>Dashboard</span>
-        </a>
-        <a class="nav-link<?php echo $routinesActive ? ' is-active' : ''; ?>" href="routine.php"<?php echo $routinesActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-repeat week-item-icon"></i>
-            <span>Routines</span>
-        </a>
-        <a class="nav-link<?php echo $tasksActive ? ' is-active' : ''; ?>" href="task.php"<?php echo $tasksActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-list-check"></i>
-            <span>Tasks</span>
-        </a>
-        <a class="nav-link<?php echo $goalsActive ? ' is-active' : ''; ?>" href="goal.php"<?php echo $goalsActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-bullseye"></i>
-            <span>Goals</span>
-        </a>
-        <a class="nav-link<?php echo $rewardsActive ? ' is-active' : ''; ?>" href="rewards.php"<?php echo $rewardsActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-gift"></i>
-            <span>Rewards Shop</span>
-        </a>
-        <a class="nav-link<?php echo $profileActive ? ' is-active' : ''; ?>" href="profile.php?self=1"<?php echo $profileActive ? ' aria-current="page"' : ''; ?>>
-            <i class="fa-solid fa-user"></i>
-            <span>Profile</span>
-        </a>
-      </nav>
-    </header>
+    <?php $pageHeading = 'Child Dashboard'; include __DIR__ . '/includes/page_header.php'; ?>
     <?php include __DIR__ . "/includes/notifications_child.php"; ?>
 
 <main class="dashboard">
@@ -1981,45 +1982,22 @@ foreach ($taskCountStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
    ?>
    <?php if (!empty($celebrationQueue)): ?>
       <div class="goal-celebration" data-goal-celebration>
+         <canvas class="goal-confetti-canvas" data-goal-confetti-canvas></canvas>
          <div class="goal-celebration-card">
-            <div class="goal-confetti" data-goal-confetti></div>
             <button type="button" class="goal-celebration-close" data-goal-celebration-close aria-label="Close celebration">
                <i class="fa-solid fa-xmark"></i>
             </button>
-            <div class="goal-celebration-icon"><i class="fa-solid fa-trophy"></i></div>
-            <h3 class="goal-celebration-title">Celebration!</h3>
+            <div class="goal-celebration-icon" data-goal-celebration-icon><i class="fa-solid fa-trophy"></i></div>
+            <h3 class="goal-celebration-title" data-goal-celebration-heading>Celebration!</h3>
             <p class="goal-celebration-goal" data-goal-celebration-title></p>
+            <div class="goal-celebration-sparkle">&#10022; &#10022; &#10022;</div>
          </div>
       </div>
       <script>
          const celebrationQueue = <?php echo json_encode($celebrationQueue, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
       </script>
    <?php endif; ?>
-   <nav class="nav-mobile-bottom" aria-label="Primary">
-      <a class="nav-mobile-link<?php echo $dashboardActive ? ' is-active' : ''; ?>" href="dashboard_child.php"<?php echo $dashboardActive ? ' aria-current="page"' : ''; ?>>
-         <i class="fa-solid fa-house"></i>
-         <span>Dashboard</span>
-      </a>
-      <a class="nav-mobile-link<?php echo $routinesActive ? ' is-active' : ''; ?>" href="routine.php"<?php echo $routinesActive ? ' aria-current="page"' : ''; ?>>
-         <i class="fa-solid fa-repeat week-item-icon"></i>
-         <span>Routines</span>
-      </a>
-      <a class="nav-mobile-link<?php echo $tasksActive ? ' is-active' : ''; ?>" href="task.php"<?php echo $tasksActive ? ' aria-current="page"' : ''; ?>>
-         <i class="fa-solid fa-list-check"></i>
-         <span>Tasks</span>
-      </a>
-      <a class="nav-mobile-link<?php echo $goalsActive ? ' is-active' : ''; ?>" href="goal.php"<?php echo $goalsActive ? ' aria-current="page"' : ''; ?>>
-         <i class="fa-solid fa-bullseye"></i>
-         <span>Goals</span>
-      </a>
-      <a class="nav-mobile-link<?php echo $rewardsActive ? ' is-active' : ''; ?>" href="rewards.php"<?php echo $rewardsActive ? ' aria-current="page"' : ''; ?>>
-         <i class="fa-solid fa-gift"></i>
-         <span>Rewards Shop</span>
-      </a>
-   </nav>
-   <footer>
-   <p>Child Task and Chore App - Ver 3.26.0</p>
-</footer>
+   <?php include __DIR__ . '/includes/page_footer.php'; ?>
 <div class="streak-celebration" data-streak-celebration aria-hidden="true">
    <canvas class="streak-confetti" data-streak-confetti></canvas>
    <div class="streak-celebration-card" role="dialog" aria-modal="true" aria-labelledby="streak-celebration-title">

@@ -6,18 +6,19 @@
 require_once __DIR__ . '/includes/functions.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = filter_input(INPUT_POST, 'username', FILTER_SANITIZE_STRING);
-    $password = filter_input(INPUT_POST, 'password', FILTER_SANITIZE_STRING);
-    $confirm_password = filter_input(INPUT_POST, 'confirm_password', FILTER_SANITIZE_STRING);
-    $first_name = filter_input(INPUT_POST, 'first_name', FILTER_SANITIZE_STRING);
-    $last_name = filter_input(INPUT_POST, 'last_name', FILTER_SANITIZE_STRING);
-    $gender = filter_input(INPUT_POST, 'gender', FILTER_SANITIZE_STRING);
+    $username = trim((string)($_POST['username'] ?? ''));
+    $password = trim((string)($_POST['password'] ?? ''));
+    $confirm_password = trim((string)($_POST['confirm_password'] ?? ''));
+    $first_name = trim((string)($_POST['first_name'] ?? ''));
+    $last_name = trim((string)($_POST['last_name'] ?? ''));
+    $gender = trim((string)($_POST['gender'] ?? ''));
     $role = 'main_parent'; // primary account creator
 
     if ($password !== $confirm_password) {
         $error = "Passwords do not match.";
     } elseif (registerUser($username, $password, $role, $first_name, $last_name, $gender)) {
         // Auto-login after registration
+        session_regenerate_id(true);
         $_SESSION['user_id'] = $db->lastInsertId();
         $_SESSION['role'] = 'parent'; // UI-level
         $_SESSION['role_type'] = $role; // detailed
@@ -34,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
     <title>Register - Child Task and Chore App</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
