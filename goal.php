@@ -1024,7 +1024,9 @@ if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
         .goal-card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
         .goal-card-actions { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
         .goal-card-badges { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-        .goal-card-footer { display: flex; justify-content: flex-end; margin-top: 14px; }
+        .goal-card-footer { display: flex; align-items: center; gap: 8px; justify-content: flex-end; margin-top: 25px; }
+        .goal-footer-actions { display: flex; flex: 1; gap: 8px; }
+        .goal-footer-actions .button { flex: 1; justify-content: center; }
         .task-card-menu { position: relative; }
         .task-card-menu-toggle { width: 42px; height: 42px; border-radius: 14px; border: 1px solid #e0e0e0; background: #f5f7fb; color: #546e7a; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
         .task-card-menu-list { position: absolute; bottom: calc(100% + 10px); right: 0; background: #fff; border: 1px solid #e6ebf1; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.12); padding: 8px; display: none; min-width: 190px; z-index: 10; }
@@ -1162,6 +1164,17 @@ if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
             border-left: 5px solid #f44336;
         }
         /* .no-scroll, page-header, nav-links, nav-mobile-bottom → css/shared.css */
+        .goal-deny-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 4500; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 150ms ease; }
+        .goal-deny-modal.open { opacity: 1; pointer-events: all; }
+        .goal-deny-modal-card { background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.18); padding: 24px; max-width: 440px; width: calc(100% - 32px); display: grid; }
+        .goal-deny-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .goal-deny-modal-header h2 { margin: 0; font-size: 1.1rem; }
+        .goal-deny-modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #555; line-height: 1; padding: 0; }
+        .goal-deny-modal-sub { color: #555; font-size: 0.9rem; margin: 0 0 12px; }
+        .goal-deny-modal-textarea { width: 100%; box-sizing: border-box; min-height: 80px; resize: vertical; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 0.95rem; background: #f8f8fc; font-family: inherit; }
+        .goal-deny-modal-textarea:focus { outline: none; border-color: #e53935; }
+        .goal-deny-modal-actions { display: flex; gap: 10px; margin-top: 14px; }
+        .goal-deny-modal-actions .button { flex: 1; justify-content: center; }
     </style>
 </head>
 <body<?php echo !empty($bodyClasses) ? ' class="' . implode(' ', $bodyClasses) . '"' : ''; ?>>
@@ -1352,7 +1365,29 @@ if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
                                         </div>
                                     </div>
                                     <?php if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])): ?>
+                                        <?php if ($goal['status'] === 'pending_approval'): ?>
+                                            <form method="POST" action="goal.php" id="approve-goal-form-<?php echo (int) $goal['id']; ?>">
+                                                <input type="hidden" name="goal_id" value="<?php echo (int) $goal['id']; ?>">
+                                            </form>
+                                            <form method="POST" action="goal.php" id="reject-goal-form-<?php echo (int) $goal['id']; ?>">
+                                                <input type="hidden" name="goal_id" value="<?php echo (int) $goal['id']; ?>">
+                                            </form>
+                                        <?php endif; ?>
                                         <div class="goal-card-footer">
+                                            <?php if ($goal['status'] === 'pending_approval'): ?>
+                                                <div class="goal-footer-actions">
+                                                    <button type="submit" name="approve_goal" class="button"
+                                                            form="approve-goal-form-<?php echo (int) $goal['id']; ?>">
+                                                        <i class="fa-solid fa-circle-check"></i> Approve
+                                                    </button>
+                                                    <button type="button" class="button danger"
+                                                            data-goal-deny-open
+                                                            data-form-id="reject-goal-form-<?php echo (int) $goal['id']; ?>"
+                                                            data-child-name="<?php echo htmlspecialchars($goal['child_display_name'], ENT_QUOTES); ?>">
+                                                        <i class="fa-solid fa-xmark"></i> Deny
+                                                    </button>
+                                                </div>
+                                            <?php endif; ?>
                                             <div class="task-card-menu" data-goal-menu>
                                                 <button type="button" class="task-card-menu-toggle" aria-label="Open goal actions" data-goal-menu-toggle>
                                                     <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -1376,19 +1411,6 @@ if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
                                                 </div>
                                             </div>
                                         </div>
-                                    <?php endif; ?>
-                                    <?php if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])): ?>
-                                        <?php if ($goal['status'] === 'pending_approval'): ?>
-                                            <form method="POST" action="goal.php">
-                                                <input type="hidden" name="goal_id" value="<?php echo $goal['id']; ?>">
-                                                <button type="submit" name="approve_goal" class="button">Approve</button>
-                                                <button type="submit" name="reject_goal" class="button" style="background-color: #f44336;">Deny</button>
-                                                <div class="reject-comment">
-                                                    <label for="rejection_comment_<?php echo $goal['id']; ?>">Reason (optional):</label>
-                                                    <textarea id="rejection_comment_<?php echo $goal['id']; ?>" name="rejection_comment"></textarea>
-                                                </div>
-                                            </form>
-                                        <?php endif; ?>
                             <?php elseif ($_SESSION['role'] === 'child' && $goal['status'] === 'active' && ($goal['goal_type'] ?? 'manual') === 'manual'): ?>
                                         <form method="POST" action="goal.php">
                                             <input type="hidden" name="goal_id" value="<?php echo $goal['id']; ?>">
@@ -1630,6 +1652,22 @@ if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
                 </details>
             <?php endif; ?>
         </div>
+    <div class="goal-deny-modal" id="goal-deny-modal">
+        <div class="goal-deny-modal-card" role="dialog" aria-modal="true" aria-labelledby="goal-deny-modal-title">
+            <div class="goal-deny-modal-header">
+                <h2 id="goal-deny-modal-title">Deny Goal</h2>
+                <button type="button" class="goal-deny-modal-close" data-goal-deny-close aria-label="Close">&times;</button>
+            </div>
+            <p id="goal-deny-modal-sub" class="goal-deny-modal-sub"></p>
+            <textarea id="goal-deny-note-input" name="rejection_comment"
+                      class="goal-deny-modal-textarea"
+                      placeholder="Reason for denying (optional)" rows="4"></textarea>
+            <div class="goal-deny-modal-actions">
+                <button type="button" class="button secondary" data-goal-deny-cancel>Cancel</button>
+                <button type="submit" name="reject_goal" id="goal-deny-submit-btn" class="button danger">Deny Goal</button>
+            </div>
+        </div>
+    </div>
     </main>
     <?php if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])): ?>
         <div class="goal-create-modal" data-goal-create-modal>
@@ -2811,6 +2849,39 @@ if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
 <?php if (!empty($isChildNotificationUser)): ?>
     <?php include __DIR__ . '/includes/notifications_child.php'; ?>
 <?php endif; ?>
+<script>
+(function () {
+    const modal     = document.getElementById('goal-deny-modal');
+    if (!modal) return;
+    const titleEl   = document.getElementById('goal-deny-modal-title');
+    const subEl     = document.getElementById('goal-deny-modal-sub');
+    const noteEl    = document.getElementById('goal-deny-note-input');
+    const submitBtn = document.getElementById('goal-deny-submit-btn');
+
+    function openModal(formId, childName) {
+        titleEl.textContent = 'Deny Goal for ' + childName;
+        subEl.textContent   = 'Optionally provide a reason for ' + childName + ':';
+        noteEl.value = '';
+        noteEl.setAttribute('form', formId);
+        submitBtn.setAttribute('form', formId);
+        modal.classList.add('open');
+        document.body.classList.add('no-scroll');
+        setTimeout(function () { noteEl.focus(); }, 50);
+    }
+
+    function closeModal() {
+        modal.classList.remove('open');
+        document.body.classList.remove('no-scroll');
+    }
+
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('[data-goal-deny-open]');
+        if (trigger) { openModal(trigger.dataset.formId, trigger.dataset.childName); return; }
+        if (e.target.closest('[data-goal-deny-close]') || e.target.closest('[data-goal-deny-cancel]')) { closeModal(); return; }
+        if (e.target === modal) closeModal();
+    });
+}());
+</script>
 </body>
 </html>
 
