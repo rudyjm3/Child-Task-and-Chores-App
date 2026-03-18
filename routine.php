@@ -1143,6 +1143,8 @@ margin-bottom: 20px;}
         .routine-card.is-hidden { display: none; }
         @media (max-width: 768px) {
             .routine-card-grid { grid-template-columns: 1fr; }
+            .routine-layout { padding-left: 0; padding-right: 0; padding-bottom: 0; }
+            .routine-section { padding: 10px; }
         }
         .routine-section h2 { margin-top: 0; font-size: 1.5rem; }
         .form-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }

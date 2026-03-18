@@ -35,6 +35,7 @@
     .nav-links { display: none; }
     .nav-mobile-bottom { display: flex; justify-content: space-between; }
     body { padding-bottom: 72px; }
+    .page-header { padding-left: 0; padding-right: 0; }
 }
 
 /* ── Shared Form Styles ────────────────────────────── */

@@ -654,6 +654,8 @@ if (isset($_SESSION['user_id']) && canCreateContent($_SESSION['user_id'])) {
             border-bottom: 1px solid #e0e0e0;
         }
         @media (max-width: 768px) {
+            .goal-list { padding-left: 0; padding-right: 0; }
+            .goal-actions { padding-left: 0; padding-right: 0; }
             .goal-create-body {
                 padding-left: 14px;
                 padding-right: 14px;

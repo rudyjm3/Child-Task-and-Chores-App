@@ -1010,6 +1010,7 @@ function renderStreakCheckSvg($suffix) {
 <?php $pageTitle = 'Parent Dashboard'; include __DIR__ . '/includes/html_head.php'; ?>
     <style>
         .dashboard { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        @media (max-width: 768px) { .dashboard { padding-left: 0; padding-right: 0; } }
         .children-overview, .management-links, .active-rewards, .redeemed-rewards, .manage-family { margin-top: 20px; }
         .children-overview { margin-bottom: 20px; padding-bottom: 20px; }
         .children-overview-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }

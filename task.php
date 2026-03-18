@@ -663,6 +663,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
         .task-create-fab { grid-column: 2; grid-row: 1 / span 2; display: flex; justify-content: flex-end; padding: 0; margin: 0; position: static; }
         @media (max-width: 768px) {
             .task-create-fab { top: 16px; right: 16px; }
+            .task-list { padding-left: 0; padding-right: 0; }
         }
         .task-list-title { margin: 0; font-size: 1.8rem; color: #263238; }
         .task-list-subtitle { margin: 0; color: #7a869a; font-weight: 600; }
@@ -686,7 +687,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
         .task-filter-form { display: none; }
         .task-filter-form.is-open { display: grid; }
         .task-reject-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
-        .task-reject-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .task-reject-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1; }
         .task-section-toggle { margin: 18px 0 10px; border-radius: 10px; padding: 0; background: transparent; box-shadow: none; overflow: hidden; }
         .task-section-toggle > summary { cursor: pointer; font-weight: 700; color: #37474f; display: flex; align-items: center; justify-content: space-between; gap: 10px; list-style: none; padding: 8px 4px; transition: color 150ms ease; }
         .task-section-toggle > summary:hover .task-section-title { color: #0d47a1; }
@@ -707,7 +708,8 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
         .task-section-toggle[open] .task-section-content { max-height: 12000px; opacity: 1; transform: translateY(0); }
         .task-approved-view-more { display: flex; justify-content: center; margin: 12px 0 4px; }
         .task-count-badge { background: #ff6f61; color: #fff; border-radius: 12px; padding: 2px 8px; font-size: 0.8rem; font-weight: 700; min-width: 24px; text-align: center; }
-        .task-calendar-section { width: 100%; max-width: 100%; margin: 0 auto 24px; padding: 0 20px; }
+        .task-calendar-section { width: 100%; max-width: 100%; margin: 0 auto 24px; padding: 0; }
+        @media (min-width: 769px) { .task-calendar-section { padding: 0 20px; } }
         .task-calendar-card { background: #fff; border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 16px; display: grid; gap: 16px; }
         .calendar-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
         .calendar-header h2 { margin: 0; font-size: 1.2rem; }
@@ -828,7 +830,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
          color: #9f9f9f; /*background: #f5f5f5; border-color: #d5def0; color: #757575;*/ }
         .task-reject-form { margin-top: 12px; display: grid; gap: 8px; }
         .task-reject-form textarea { width: 100%; min-height: 70px; resize: vertical; }
-        .task-reject-actions { display: flex; gap: 8px; }
+        .task-reject-actions { display: flex; gap: 8px; flex: 1; }
         .task-reject-actions .button { flex: 1; justify-content: center; }
         .task-approve-btn { width: 100%; margin-top: 8px; justify-content: center; }
         .task-modal[data-needs-work-modal] { z-index: 4500; }
