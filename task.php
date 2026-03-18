@@ -664,6 +664,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
         @media (max-width: 768px) {
             .task-create-fab { top: 16px; right: 16px; }
             .task-list { padding-left: 0; padding-right: 0; }
+            [data-needs-work-open] { padding: 10px; }
         }
         .task-list-title { margin: 0; font-size: 1.8rem; color: #263238; }
         .task-list-subtitle { margin: 0; color: #7a869a; font-weight: 600; }
