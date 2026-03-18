@@ -611,7 +611,7 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
             box-shadow: 0 6px 16px rgba(0,0,0,0.08);
             overflow: hidden;
         }
-        .task-card[open] { box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
+        /* .task-card[open] { box-shadow: 0 10px 24px rgba(0,0,0,0.12); } */
         .task-card summary { list-style: none; cursor: pointer; }
         .task-card summary::-webkit-details-marker { display: none !important; }
         .task-card summary::marker { content: '' !important; }
@@ -828,7 +828,13 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
          color: #9f9f9f; /*background: #f5f5f5; border-color: #d5def0; color: #757575;*/ }
         .task-reject-form { margin-top: 12px; display: grid; gap: 8px; }
         .task-reject-form textarea { width: 100%; min-height: 70px; resize: vertical; }
-        .task-reject-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+        .task-reject-actions { display: flex; gap: 8px; }
+        .task-reject-actions .button { flex: 1; justify-content: center; }
+        .task-approve-btn { width: 100%; margin-top: 8px; justify-content: center; }
+        .task-modal[data-needs-work-modal] { z-index: 4500; }
+        .needs-work-modal-sub { color: #555; font-size: 0.9rem; margin: 0 0 12px; }
+        .needs-work-modal-textarea { width: 100%; box-sizing: border-box; min-height: 80px; resize: vertical; border: 1.5px solid #e0e0e0; border-radius: 8px; padding: 10px 12px; font-size: 0.95rem; background: #f8f8fc; font-family: inherit; }
+        .needs-work-modal-textarea:focus { outline: none; border-color: #7c3aed; }
         .modal-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
         .timer-controls {
             display: flex;
@@ -843,13 +849,18 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
             background-color: #2196f3;
             color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             user-select: none;
             -webkit-user-select: none;
             -ms-user-select: none;
             -webkit-touch-callout: none;
             touch-action: manipulation;
+        }
+        .task-modal-body button[name="complete_task"],
+        .task-modal-body [data-task-proof-open],
+        .floating-task-actions [data-floating-finish] {
+            border-radius: 8px;
         }
         .timer-cancel-button {
             padding: 10px 20px;
@@ -2762,6 +2773,8 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                 }
             } else if (canManageTasks) {
                 if (statusForView === 'pending') {
+                    const footer = document.createElement('div');
+                    footer.className = 'task-card-footer';
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = 'task.php';
@@ -2779,18 +2792,14 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                     const button = document.createElement('button');
                     button.type = 'submit';
                     button.name = 'complete_task';
-                    button.className = 'button';
+                    button.className = 'button task-card-primary';
                     button.textContent = 'Finish Task';
                     form.appendChild(hidden);
                     form.appendChild(button);
-                    body.appendChild(form);
-
-                    const footer = document.createElement('div');
-                    footer.className = 'task-card-footer';
                     const editButton = document.createElement('button');
                     editButton.type = 'button';
-                    editButton.className = 'button task-card-primary';
-                    editButton.textContent = 'Edit Task';
+                    editButton.className = 'task-card-menu-item';
+                    editButton.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Task';
                     editButton.dataset.taskEditOpen = '';
                     editButton.dataset.taskId = String(task.id);
                     editButton.dataset.childId = String(task.child_user_id || '');
@@ -2816,8 +2825,8 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                     deleteButton.dataset.childName = task.child_name || '';
                     deleteButton.dataset.title = task.title || '';
                     deleteButton.innerHTML = '<i class="fa-regular fa-trash-can"></i> Delete Forever';
-                    footer.appendChild(editButton);
-                    footer.appendChild(buildMenu([duplicateMenuItem, deleteButton]));
+                    footer.appendChild(form);
+                    footer.appendChild(buildMenu([editButton, duplicateMenuItem, deleteButton]));
                     body.appendChild(footer);
                 } else if (statusForView === 'completed') {
                     const approveForm = document.createElement('form');
@@ -2834,19 +2843,11 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                         instanceInput.value = viewDateKey;
                         approveForm.appendChild(instanceInput);
                     }
-                    const approveButton = document.createElement('button');
-                    approveButton.type = 'submit';
-                    approveButton.name = 'approve_task';
-                    approveButton.className = 'button';
-                    approveButton.textContent = 'Review & Approve';
-                    approveForm.appendChild(hidden);
-                    approveForm.appendChild(approveButton);
-                    body.appendChild(approveForm);
-
+                    const rejectFormId = `reject-form-modal-${task.id}`;
                     const rejectForm = document.createElement('form');
                     rejectForm.method = 'POST';
                     rejectForm.action = 'task.php';
-                    rejectForm.className = 'task-reject-form';
+                    rejectForm.id = rejectFormId;
                     const rejectHidden = document.createElement('input');
                     rejectHidden.type = 'hidden';
                     rejectHidden.name = 'task_id';
@@ -2862,35 +2863,38 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                     rejectFlag.type = 'hidden';
                     rejectFlag.name = 'reject_task';
                     rejectFlag.value = '1';
-                    const rejectLabel = document.createElement('label');
-                    rejectLabel.setAttribute('for', `reject_note_modal_${task.id}`);
-                    rejectLabel.textContent = 'Rejection note (optional)';
-                    const rejectNote = document.createElement('textarea');
-                    rejectNote.name = 'reject_note';
-                    rejectNote.id = `reject_note_modal_${task.id}`;
-                    rejectNote.placeholder = 'Explain why this task was rejected.';
+                    rejectForm.appendChild(rejectHidden);
+                    rejectForm.appendChild(rejectFlag);
+                    body.appendChild(rejectForm);
+
                     const rejectActions = document.createElement('div');
                     rejectActions.className = 'task-reject-actions';
                     const reactivateBtn = document.createElement('button');
-                    reactivateBtn.type = 'submit';
-                    reactivateBtn.name = 'reject_action';
-                    reactivateBtn.value = 'reactivate';
+                    reactivateBtn.type = 'button';
                     reactivateBtn.className = 'button secondary';
-                    reactivateBtn.textContent = 'Reject & Reactivate';
+                    reactivateBtn.setAttribute('data-needs-work-open', '');
+                    reactivateBtn.setAttribute('data-form-id', rejectFormId);
+                    reactivateBtn.setAttribute('data-child-name', task.child_name || 'Child');
+                    reactivateBtn.innerHTML = '<i class="fa-regular fa-comment-dots"></i> Needs Work';
                     const closeBtn = document.createElement('button');
                     closeBtn.type = 'submit';
                     closeBtn.name = 'reject_action';
                     closeBtn.value = 'close';
                     closeBtn.className = 'button danger';
-                    closeBtn.textContent = 'Reject & Close';
+                    closeBtn.setAttribute('form', rejectFormId);
+                    closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i> Reject';
                     rejectActions.appendChild(reactivateBtn);
                     rejectActions.appendChild(closeBtn);
-                    rejectForm.appendChild(rejectHidden);
-                    rejectForm.appendChild(rejectFlag);
-                    rejectForm.appendChild(rejectLabel);
-                    rejectForm.appendChild(rejectNote);
-                    rejectForm.appendChild(rejectActions);
-                    body.appendChild(rejectForm);
+                    body.appendChild(rejectActions);
+
+                    approveForm.appendChild(hidden);
+                    const approveButton = document.createElement('button');
+                    approveButton.type = 'submit';
+                    approveButton.name = 'approve_task';
+                    approveButton.className = 'button task-approve-btn';
+                    approveButton.innerHTML = '<i class="fa-solid fa-circle-check"></i> Approve';
+                    approveForm.appendChild(approveButton);
+                    body.appendChild(approveForm);
                     const footer = document.createElement('div');
                     footer.className = 'task-card-footer';
                     footer.appendChild(document.createElement('div'));
@@ -3461,21 +3465,25 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                                     <?php if (!empty($task['instance_date'])): ?>
                                         <input type="hidden" name="instance_date" value="<?php echo htmlspecialchars($task['instance_date']); ?>">
                                     <?php endif; ?>
-                                    <button type="submit" name="approve_task" class="button">Review &amp; Approve</button>
                                 </form>
-                                <form method="POST" action="task.php" class="task-reject-form" id="reject-form-<?php echo (int) $task['id']; ?>">
+                                <form method="POST" action="task.php" id="reject-form-<?php echo (int) $task['id']; ?>">
                                     <input type="hidden" name="task_id" value="<?php echo $task['id']; ?>">
                                     <input type="hidden" name="reject_task" value="1">
                                     <?php if (!empty($task['instance_date'])): ?>
                                         <input type="hidden" name="instance_date" value="<?php echo htmlspecialchars($task['instance_date']); ?>">
                                     <?php endif; ?>
-                                    <label for="reject_note_<?php echo (int) $task['id']; ?>">Rejection note (optional)</label>
-                                    <textarea id="reject_note_<?php echo (int) $task['id']; ?>" name="reject_note" placeholder="Explain why this task was rejected."></textarea>
                                 </form>
                                 <div class="task-reject-bar">
                                     <div class="task-reject-actions">
-                                        <button type="submit" name="reject_action" value="reactivate" class="button secondary" form="reject-form-<?php echo (int) $task['id']; ?>">Reject &amp; Reactivate</button>
-                                        <button type="submit" name="reject_action" value="close" class="button danger" form="reject-form-<?php echo (int) $task['id']; ?>">Reject &amp; Close</button>
+                                        <button type="button" class="button secondary"
+                                                data-needs-work-open
+                                                data-form-id="reject-form-<?php echo (int) $task['id']; ?>"
+                                                data-child-name="<?php echo htmlspecialchars($childName, ENT_QUOTES); ?>">
+                                            <i class="fa-regular fa-comment-dots"></i> Needs Work
+                                        </button>
+                                        <button type="submit" name="reject_action" value="close" class="button danger" form="reject-form-<?php echo (int) $task['id']; ?>">
+                                            <i class="fa-solid fa-xmark"></i> Reject
+                                        </button>
                                     </div>
                                     <div class="task-card-menu" data-task-menu>
                                         <button type="button" class="task-card-menu-toggle" aria-label="Open task actions" data-task-menu-toggle>
@@ -3506,6 +3514,9 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                                         </div>
                                     </div>
                                 </div>
+                                <button type="submit" name="approve_task" class="button task-approve-btn" form="approve-form-<?php echo (int) $task['id']; ?>">
+                                    <i class="fa-solid fa-circle-check"></i> Approve
+                                </button>
                                     <?php else: ?>
                                         <p class="waiting-label">Waiting for approval</p>
                                     <?php endif; ?>
@@ -3723,6 +3734,22 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
                 <div class="task-week-list" data-task-list></div>
             </div>
         </section>
+        <div class="task-modal" id="needs-work-modal" data-needs-work-modal>
+            <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="needs-work-modal-title" style="max-width:440px;">
+                <header>
+                    <h2 id="needs-work-modal-title">Provide Feedback</h2>
+                    <button type="button" class="task-modal-close" data-needs-work-close aria-label="Close">&times;</button>
+                </header>
+                <div class="task-modal-body">
+                    <p id="needs-work-modal-sub" class="needs-work-modal-sub"></p>
+                    <textarea id="needs-work-note-input" name="reject_note" class="needs-work-modal-textarea" placeholder="Feedback for improvement" rows="4"></textarea>
+                    <div class="modal-actions" style="margin-top:14px;">
+                        <button type="button" class="button secondary" data-needs-work-cancel>Cancel</button>
+                        <button type="submit" name="reject_action" value="reactivate" id="needs-work-submit-btn" class="button">Send Feedback</button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <?php if (canCreateContent($_SESSION['user_id']) && canAddEditChild($_SESSION['user_id'])): ?>
         <div class="task-modal" data-task-edit-modal>
                 <div class="task-modal-card" role="dialog" aria-modal="true" aria-labelledby="task-edit-title">
@@ -4093,8 +4120,39 @@ $calendarPremium = !empty($_SESSION['subscription_active']) || !empty($_SESSION[
 <?php if (!empty($isChildNotificationUser)): ?>
     <?php include __DIR__ . '/includes/notifications_child.php'; ?>
 <?php endif; ?>
+    <script>
+    (function () {
+        const modal     = document.getElementById('needs-work-modal');
+        if (!modal) return;
+        const titleEl   = document.getElementById('needs-work-modal-title');
+        const subEl     = document.getElementById('needs-work-modal-sub');
+        const noteEl    = document.getElementById('needs-work-note-input');
+        const submitBtn = document.getElementById('needs-work-submit-btn');
+
+        function openModal(formId, childName) {
+            titleEl.textContent = 'Provide Feedback to ' + childName;
+            subEl.textContent   = 'Help ' + childName + ' improve by providing specific feedback:';
+            noteEl.value = '';
+            noteEl.setAttribute('form', formId);
+            submitBtn.setAttribute('form', formId);
+            modal.classList.add('open');
+            document.body.classList.add('no-scroll');
+            setTimeout(function () { noteEl.focus(); }, 50);
+        }
+
+        function closeModal() {
+            modal.classList.remove('open');
+            document.body.classList.remove('no-scroll');
+        }
+
+        document.addEventListener('click', function (e) {
+            const trigger = e.target.closest('[data-needs-work-open]');
+            if (trigger) { openModal(trigger.dataset.formId, trigger.dataset.childName); return; }
+            if (e.target.closest('[data-needs-work-close]') || e.target.closest('[data-needs-work-cancel]')) { closeModal(); return; }
+            if (e.target === modal) closeModal();
+        });
+    }());
+    </script>
 </body>
 </html>
-
-
 
